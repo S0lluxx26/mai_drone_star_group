@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Builds the engine-free show core exactly as Unity does (netstandard2.1, C# 9) so the
+       algorithms can be tested with `dotnet test` without launching the editor. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>DroneStar.Core</AssemblyName>
+    <RootNamespace>DroneStar.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/DroneStar/Core/**/*.cs" />
+  </ItemGroup>
+</Project>

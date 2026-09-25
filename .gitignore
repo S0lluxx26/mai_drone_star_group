@@ -1,0 +1,50 @@
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/Assets/Plugins/Editor/JetBrains*
+.vs/
+.vscode/
+.idea/
+*.csproj
+!/tests/**/*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-build.properties
+/[Aa]ssets/[Ss]treamingAssets/aa*
+
+# dotnet test harness
+/tests/**/bin/
+/tests/**/obj/
+/tests/**/TestResults/
+
+# local tooling output
+/artifacts/
+/TestResults*.xml
+.DS_Store
+Thumbs.db
+
+# Written by the Unity Performance Testing package on every test run
+/Assets/Resources/PerformanceTestRun*
+/Assets/Resources.meta
+/Assets/Resources/
