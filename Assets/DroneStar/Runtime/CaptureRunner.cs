@@ -10,8 +10,9 @@ namespace DroneStar.App
     /// <summary>
     /// Automated screenshots for visual review and store pages. Inert unless the player is started with
     /// <c>-capture &lt;folder&gt;</c>. Optional: <c>-captureTimes 5,30,90</c> (show seconds),
-    /// or <c>-captureTimes c0,c4</c> (scenes), <c>-captureCamera orbit|audience|aerial</c>, <c>-captureTab</c>,
-    /// <c>-captureSelect &lt;cue&gt;</c>, <c>-captureAddCue &lt;kind&gt;</c>, and <c>-demo</c> to capture the cinematic run.
+    /// or <c>-captureTimes c0,c4</c> (scenes), <c>-captureCamera orbit|audience|aerial|closeup</c>, <c>-captureTab</c>,
+    /// <c>-captureSelect &lt;cue&gt;</c>, <c>-captureAddCue &lt;kind&gt;</c>, <c>-captureLive</c> (capture while playing,
+    /// so drones lean and props turn) and <c>-demo</c> to capture the cinematic run.
     /// </summary>
     public sealed class CaptureRunner : MonoBehaviour
     {
@@ -92,10 +93,19 @@ namespace DroneStar.App
             while (app.IsValidating && Time.realtimeSinceStartup - started < 180f) yield return null;
             yield return new WaitForSecondsRealtime(1.5f);
 
+            bool live = Array.IndexOf(Environment.GetCommandLineArgs(), "-captureLive") >= 0;
             foreach (float t in times)
             {
                 app.Clock.Pause();
-                app.Seek(t);
+                app.Seek(live ? Mathf.Max(0f, t - 1.5f) : t);
+                yield return new WaitForSecondsRealtime(0.3f);
+                if (mode == "closeup") app.FrameCloseUp();
+                if (live)
+                {
+                    app.Clock.Play(app.Show.Duration);
+                    while (app.Clock.Playing && app.Clock.Time < t) yield return null;
+                    app.Clock.Pause();
+                }
                 yield return new WaitForSecondsRealtime(1.2f);
                 yield return new WaitForEndOfFrame();
                 string path = Path.Combine(folder, string.Format(CultureInfo.InvariantCulture, "shot_{0:000.0}.png", t));

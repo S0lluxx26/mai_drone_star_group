@@ -29,6 +29,7 @@ Material:
     - _HaloFalloff: 4.2
     - _Intensity: 5.5
     - _MinPixels: 3.2
+    - _NearShrink: 55
     - _Reflection: 0
     - _ReflectionStrength: 0.32
     - _ReflectionStretch: 3.2

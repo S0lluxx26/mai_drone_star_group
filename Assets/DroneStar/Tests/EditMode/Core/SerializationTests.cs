@@ -102,7 +102,7 @@ namespace DroneStar.Tests
             Assert.That(c.Formation.Layers, Is.EqualTo(1));
             Assert.That(c.Formation.Center, Is.EqualTo(new Vector3(0, 60, 0)));
             Assert.That(c.Light.Effect, Is.EqualTo(LightEffect.Solid));
-            Assert.That(c.Motion.Amount, Is.EqualTo(ShowBounds.MaxMotionAmount));
+            Assert.That(c.Motion.Amount, Is.EqualTo(12f), "wave ripples are capped at 12 m");
         }
 
         [TestCase("[]")]

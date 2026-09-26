@@ -18,6 +18,8 @@ namespace DroneStar.Core
         Flower,
         Butterfly,
         Custom,
+        /// <summary>A pre-built coloured 3D model from the shape library (robot, whale, Eiffel Tower...).</summary>
+        Model,
     }
 
     public enum FillStyle
@@ -37,6 +39,8 @@ namespace DroneStar.Core
         Radial,
         Fire,
         Off,
+        /// <summary>The model's own baked colours (falls back to colour A on other shapes).</summary>
+        Artwork,
     }
 
     public enum MotionKind
@@ -50,16 +54,21 @@ namespace DroneStar.Core
         Breathe,
         /// <summary>A travelling ripple along the formation's facing axis.</summary>
         Wave,
+        /// <summary>The whole formation drifts upward by Amount metres (balloons, rockets).</summary>
+        Rise,
     }
 
     /// <summary>Hard numeric bounds for every editable field. The sanitizer clamps loaded and edited values to these.</summary>
     public static class ShowBounds
     {
         public const int MinDrones = 1;
-        public const int MaxDrones = 1000;
+        public const int MaxDrones = 4096;
+
+        /// <summary>Fleet sizes offered as presets in the editor.</summary>
+        public static readonly int[] FleetSizes = { 256, 512, 1024, 2048, 4096 };
         public const int MaxCues = 64;
         public const float MinSize = 4f;
-        public const float MaxSize = 240f;
+        public const float MaxSize = 400f;
         public const int MaxLayers = 4;
         public const int MinPoints = 2;
         public const int MaxPoints = 12;
@@ -70,12 +79,12 @@ namespace DroneStar.Core
         public const float MaxTransition = 120f;
         public const float MaxHold = 120f;
         public const float MaxAngle = 180f;
-        public const float MaxCoordinate = 500f;
+        public const float MaxCoordinate = 800f;
         public const float MaxSpin = 90f;
         public const float MaxFrequency = 2f;
         public const float MaxEffectSpeed = 5f;
         public const float MaxBrightness = 1f;
-        public const float MaxMotionAmount = 12f;
+        public const float MaxMotionAmount = 60f;
     }
 
     public sealed class FormationSpec
@@ -96,6 +105,9 @@ namespace DroneStar.Core
         public int Layers = 1;
 
         public string Text = "MAI";
+
+        /// <summary>Library model name for <see cref="FormationKind.Model"/>.</summary>
+        public string Model = "Robot";
 
         /// <summary>Star points, flower petals or galaxy arms.</summary>
         public int Points = 5;

@@ -12,6 +12,7 @@ Shader "DroneStar/DroneGlow"
         _CoreSharpness ("Core sharpness", Float) = 22
         _HaloFalloff ("Halo falloff", Float) = 4.5
         _WhiteCore ("White-hot core", Range(0, 1)) = 0.55
+        _NearShrink ("Shrink closer than (m), 0 = off", Float) = 0
         [Toggle(_REFLECTION)] _Reflection ("Water reflection", Float) = 0
         _WaterLevel ("Water level", Float) = -1.2
         _ReflectionStretch ("Reflection stretch", Float) = 3.2
@@ -42,6 +43,7 @@ Shader "DroneStar/DroneGlow"
                 float _CoreSharpness;
                 float _HaloFalloff;
                 float _WhiteCore;
+                float _NearShrink;
                 float _WaterLevel;
                 float _ReflectionStretch;
                 float _ReflectionStrength;
@@ -87,6 +89,8 @@ Shader "DroneStar/DroneGlow"
 
                 float3 viewPos = TransformWorldToView(center);
                 float dist = max(-viewPos.z, 0.05);
+                // Up close the glow tightens to the bulb so the drone carrying it stays visible.
+                if (_NearShrink > 0.0) size *= clamp(dist / _NearShrink, 0.16, 1.0);
                 // URP flips the projection when rendering into an intermediate target on D3D, so _m11 can be negative.
                 float pixelWorld = 2.0 * dist / (abs(UNITY_MATRIX_P._m11) * _ScreenParams.y);
                 float halfSize = max(size * 0.5, _MinPixels * 0.5 * pixelWorld);

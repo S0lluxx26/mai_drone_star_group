@@ -23,6 +23,7 @@ namespace DroneStar.EditorTools
         public const string Root = "Assets/DroneStar";
         public const string ScenePath = Root + "/Scenes/DroneStarStudio.unity";
         const string MaterialDir = Root + "/Materials";
+        const string DataDir = Root + "/Data";
         const string SettingsDir = Root + "/Settings";
         const string PipelinePath = SettingsDir + "/PC_RPAsset.asset";
         const string ProfilePath = SettingsDir + "/StudioPost.asset";
@@ -149,6 +150,7 @@ namespace DroneStar.EditorTools
                     x.SetFloat("_CoreSharpness", 24f);
                     x.SetFloat("_HaloFalloff", 4.2f);
                     x.SetFloat("_WhiteCore", 0.55f);
+                    x.SetFloat("_NearShrink", 55f);
                 }),
                 Reflection = Mat("DroneReflection", glow, x =>
                 {
@@ -162,7 +164,15 @@ namespace DroneStar.EditorTools
                     x.SetFloat("_ReflectionStrength", 0.3f);
                 }),
                 Trails = Mat("LightTrails", RequireShader("DroneStar/AdditiveLines"), x => x.SetFloat("_Intensity", 2.2f)),
-                Body = Mat("DroneBody", lit, x => LitColor(x, new Color(0.08f, 0.08f, 0.1f), 0.4f, 0.55f)),
+                Body = Mat("DroneBody", RequireShader("DroneStar/DroneBody"), x =>
+                {
+                    x.SetColor("_AmbientSky", new Color(0.03f, 0.045f, 0.1f));
+                    x.SetColor("_AmbientGround", new Color(0.008f, 0.01f, 0.02f));
+                    x.SetFloat("_KeyStrength", 1.1f);
+                    x.SetFloat("_KeyRange", 40f);
+                    x.SetFloat("_LedGlow", 3.2f);
+                    x.SetFloat("_Underglow", 1.4f);
+                }),
                 Sky = Mat("NightSky", RequireShader("DroneStar/NightSky"), x =>
                 {
                     x.SetVector("_MoonDirection", MoonDirection);
@@ -206,6 +216,14 @@ namespace DroneStar.EditorTools
             };
             m.Body.enableInstancing = true;
             EditorUtility.SetDirty(m.Body);
+        }
+
+        static T RequireAsset<T>(string path) where T : UnityEngine.Object
+        {
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+            T asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset == null) throw new InvalidOperationException("Missing " + path);
+            return asset;
         }
 
         static Shader RequireShader(string name)
@@ -371,6 +389,8 @@ namespace DroneStar.EditorTools
             appSo.FindProperty("demo").objectReferenceValue = demo;
             appSo.FindProperty("score").objectReferenceValue = score;
             appSo.FindProperty("bridge").objectReferenceValue = bridge;
+            appSo.FindProperty("shapePack").objectReferenceValue = RequireAsset<TextAsset>(DataDir + "/ShapePack.bytes");
+            appSo.FindProperty("demoAssignments").objectReferenceValue = RequireAsset<TextAsset>(DataDir + "/DemoAssignments.bytes");
             appSo.ApplyModifiedPropertiesWithoutUndo();
 
             var captureGo = new GameObject("Capture Runner");

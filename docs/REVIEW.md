@@ -1,10 +1,12 @@
-# Review log — 2026-09-25
+# Review log
+
+## Round 1 — 2026-09-25
 
 Two independent reviews (show-core logic; Unity runtime, UI, shaders and tooling), plus visual review of
 automated captures from the Windows player. Every finding below was fixed; regression tests are in
 `Assets/DroneStar/Tests/EditMode/Core/ReviewRegressionTests.cs`.
 
-## Show core
+### Show core
 
 | # | Finding | Fix |
 |---|---|---|
@@ -20,7 +22,7 @@ automated captures from the Windows player. Every finding below was fixed; regre
 | 10 | Violations past 40 per kind were silently dropped. | A summary finding reports how many more exist. |
 | — | Mono throws `OverflowException` for `1e999` where .NET returns ∞ (found by running the suite inside Unity). | Runtime-independent `TryParse`. |
 
-## Unity layer
+### Unity layer
 
 | # | Finding | Fix |
 |---|---|---|
@@ -38,10 +40,43 @@ automated captures from the Windows player. Every finding below was fixed; regre
 | 12 | Airframes were drawn at any distance (≈1 M lit vertices at 1000 drones). | Drawn only within 160 m; paused frames skip re-sampling and uploads. |
 | 13 | `pow()` with a negative base in the sky shader. | `x * x`. |
 
-## Visual review (automated captures)
+### Visual review (automated captures)
 
 - Top bar and timeline were squeezed by the overflowing cue panel → fixed flex shrink/basis.
 - Default-theme text fields rendered white → dark skin for fields, dropdowns, toggles, sliders, scrollers.
 - Shore lanterns became large blobs next to the audience camera → smaller sprites.
 - Text scenes filmed from a side dolly read skewed → flat formations get frontal shots only.
 - The galaxy was tilted too far to read as a spiral → faces the audience more.
+
+## Round 2 — 2026-09-26: 4,096-drone fleets, 3D models, detailed drones
+
+Two more independent reviews (show core; Unity layer) of the large-fleet work, each finding checked with a
+probe before it was fixed. Regression tests are in `LargeFleetTests.cs`, `BakedDemoTests.cs`,
+`ProjectAssetTests.cs` and the PlayMode suite.
+
+### Show core
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Growing a show for a bigger fleet kept spin and breathe rates, so edge speed and acceleration grew by √2: the 4,096-drone preset failed the safety check (12.8 m/s, 6.8 m/s²). | Spins and breathing slow by the size factor when a show grows; every preset is now compiled and validated in the tests. |
+| 2 | The auction is only ε-optimal, so a pair of drones could be better off swapped, which CAPT's collision-free proof does not allow (closest pass 1.44 m against 1.5 m on a wide show). | Pairwise-swap repair after the auction (resumable); a test checks every pair. |
+| 3 | Models had exactly 4,096 points, so a 4,096-drone fleet could never light every drone. | 12,288 points per model (midpoints between neighbours, farthest-point order); presets checked for full lighting. |
+| 4 | Filled shapes tested every lattice point against every outline edge inside a binary search: up to 1.4 s in one frame at 4,096 drones. | Bucketed edge grid and a coarser stopping rule: 28–86 ms. Layouts are also cached, so an edit re-lays only its cue. |
+| 5 | A baked assignment was trusted on its recipe key alone; a layout change without a re-bake would have shipped stale permutations silently. | Entries record their total cost and are re-solved on a mismatch; tests validate the shows as the app compiles them. |
+| 6 | Cache eviction could drop the baked demo entries in a long session. | Imported entries live in their own cache and are never evicted. |
+| 7 | Each edit restarted a half-finished 4,096-drone auction from zero. | Pending auctions are kept on the compiler and resumed. |
+| 8 | The Rise speed hint assumed at least 1 s of travel. | Same travel time as the motion itself. |
+| 9 | Found by the new cost check when the suite ran inside Unity: Mono and .NET laid out the Spiral Galaxy differently (a bisected pitch left a lattice point on the core's edge to within rounding, and four equal-length arms tied for a leftover sample), so shipped assignments missed. | Pitches settle off the knife edge; ties and near-integer floors resolve the same way on every runtime. A Mono-vs-.NET digest of all 48 preset layouts now matches. |
+| 10 | New model cues used one default size, so a whale in the 360-drone show lit only 286 drones. | `SizeToLight` sizes each model for the fleet; the inspector offers **Enlarge to light all** for any cue that parks drones. |
+
+### Unity layer
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Grounded airframes sank 5 cm into the barge (the model's origin is the LED bulb). | Drones on the pad stand on their skids; the lift fades out over the first metre of climb. |
+| 2 | The reveal shot anchored to a slot's rest position while the formation turned during the hold. | The anchor follows the hold motion. |
+| 3 | A two-finger pinch on a phone also panned, which ended the close-up. | While following, two fingers only zoom. |
+| 4 | The pre-show ground segment was treated as the end of the show, cutting the new launch shot after 1 s. | Only the ground after landing ends the show. |
+| 5 | The followed drone's index survived fleet changes and template loads. | The close-up ends when the show is replaced or its fleet size changes. |
+| 6 | Leaving a close-up (another camera mode, a demo run) left the orbit a few metres from empty sky. | The orbit that the close-up interrupted is restored. |
+| 7 | Two test assertions could not fail. | The airframe test checks triangle winding against geometry; the tautology is gone. |

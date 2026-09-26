@@ -283,6 +283,7 @@ namespace DroneStar.App
             if (Input.GetKeyDown(KeyCode.Alpha1)) app.CameraRig.SetMode(CameraMode.Orbit);
             if (Input.GetKeyDown(KeyCode.Alpha2)) app.CameraRig.SetMode(CameraMode.Audience);
             if (Input.GetKeyDown(KeyCode.Alpha3)) app.CameraRig.SetMode(CameraMode.Aerial);
+            if (Input.GetKeyDown(KeyCode.Alpha4)) app.FrameCloseUp();
             if (Input.GetKeyDown(KeyCode.T))
             {
                 app.Swarm.TrailsEnabled = !app.Swarm.TrailsEnabled;

@@ -37,21 +37,97 @@ namespace DroneStar.Tests
             }
         }
 
-        [UnityTest]
-        public IEnumerator FlagshipShowCompilesValidatesAndRendersEveryDrone()
+        /// <summary>The editing tests use the 360-drone classic show, which plans in a moment on any machine.</summary>
+        IEnumerator OpenClassicShow()
         {
+            app.NewFromTemplate(DemoShows.Templates[1]);
+            yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 60f, "classic show compile");
             Assert.That(app.Show.DroneCount, Is.EqualTo(360));
-            yield return WaitFor(() => app.Report != null, 120f, "safety check");
-            Assert.That(app.Report.Passed, Is.True, string.Join("\n", app.Report.Issues.ConvertAll(i => i.Message)));
+        }
+
+        [UnityTest]
+        public IEnumerator FlagshipCompilesFromTheBakedCacheAndRendersEveryDrone()
+        {
+            Assert.That(app.Show.DroneCount, Is.EqualTo(2048));
+            Assert.That(app.CompileError, Is.Null);
             yield return null;
-            Assert.That(app.Swarm.DroneCount, Is.EqualTo(360));
+            Assert.That(app.Swarm.DroneCount, Is.EqualTo(2048));
             var glow = app.Swarm.transform.Find("LED Glow").GetComponent<MeshFilter>().sharedMesh;
-            Assert.That(glow.vertexCount, Is.EqualTo(360 * 4));
+            Assert.That(glow.vertexCount, Is.EqualTo(2048 * 4));
+            // Model scenes need the shape library that the scene ships with.
+            for (int i = 0; i < app.Show.CueTimings.Count; i++)
+            {
+                Assert.That(app.Show.CueTimings[i].Formation.LitCount, Is.EqualTo(2048), app.Show.Document.Cues[i].Name);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ClassicShowValidates()
+        {
+            yield return OpenClassicShow();
+            yield return WaitFor(() => app.Report != null, 180f, "safety check");
+            Assert.That(app.Report.Passed, Is.True, string.Join("\n", app.Report.Issues.ConvertAll(i => i.Message)));
+        }
+
+        [UnityTest]
+        public IEnumerator CloseUpFollowsADroneWithDetailedAirframes()
+        {
+            CueTiming robot = app.Show.CueTimings[2];
+            app.Seek(robot.HoldStart + 1f);
+            yield return null;
+            yield return null;
+            app.CameraRig.SetMode(CameraMode.Orbit);
+            app.FrameCloseUp();
+            Assert.That(app.CameraRig.IsFollowing, Is.True);
+            Assert.That(app.FollowedDrone, Is.InRange(0, 2047));
+            app.Clock.Play(app.Show.Duration);
+            yield return new WaitForSecondsRealtime(1.5f);
+            float distance = Vector3.Distance(app.CameraRig.transform.position, LastPosition(app.FollowedDrone));
+            Assert.That(distance, Is.LessThan(12f), "the camera flies beside the followed drone");
+            Assert.That(app.Swarm.DetailedDrawn, Is.GreaterThan(0), "nearby drones use the detailed airframe");
+            app.Clock.Pause();
+            app.FrameSelection();
+            Assert.That(app.CameraRig.IsFollowing, Is.False, "framing a formation stops following");
+        }
+
+        Vector3 LastPosition(int drone)
+        {
+            var positions = new System.Numerics.Vector3[app.Show.DroneCount];
+            app.Show.SamplePositions(app.Clock.Time, positions);
+            return positions[drone].ToUnity();
+        }
+
+        [UnityTest]
+        public IEnumerator FleetPresetRescalesAndRecompiles()
+        {
+            yield return OpenClassicShow();
+            float heart = app.Session.Document.Cues[5].Formation.Size;
+            app.SetFleetSize(512);
+            Assert.That(app.Session.Document.DroneCount, Is.EqualTo(512));
+            Assert.That(app.Session.Document.Cues[5].Formation.Size, Is.GreaterThan(heart));
+            yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 120f, "recompile at 512 drones");
+            Assert.That(app.Show.DroneCount, Is.EqualTo(512));
+            Assert.That(app.CompileError, Is.Null);
+        }
+
+        [UnityTest]
+        public IEnumerator ModelCueCanBeAddedFromTheLibrary()
+        {
+            yield return OpenClassicShow();
+            app.Select(0, seek: false);
+            app.AddCue(FormationKind.Model, "Whale");
+            Cue cue = app.Session.Document.Cues[app.SelectedCue];
+            Assert.That(cue.Formation.Kind, Is.EqualTo(FormationKind.Model));
+            Assert.That(cue.Formation.Model, Is.EqualTo("Whale"));
+            Assert.That(cue.Light.Effect, Is.EqualTo(LightEffect.Artwork));
+            yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 60f, "recompile");
+            Assert.That(app.Show.CueTimings[app.SelectedCue].Formation.LitCount, Is.EqualTo(360));
         }
 
         [UnityTest]
         public IEnumerator EditingRecompilesAndUndoRestores()
         {
+            yield return OpenClassicShow();
             app.Select(1, seek: false);
             float before = app.Session.Document.Cues[1].Formation.Size;
             app.Session.Edit("Grow", d => d.Cues[1].Formation.Size = before + 12f);
@@ -68,6 +144,7 @@ namespace DroneStar.Tests
         [UnityTest]
         public IEnumerator AddMoveAndDeleteCues()
         {
+            yield return OpenClassicShow();
             int count = app.Session.Document.Cues.Count;
             app.Select(0, seek: false);
             app.AddCue(FormationKind.Cube);
@@ -121,6 +198,7 @@ namespace DroneStar.Tests
         [UnityTest]
         public IEnumerator SketchCueShowsDrawingPadAndFlies()
         {
+            yield return OpenClassicShow();
             app.Select(0, seek: false);
             app.AddCue(FormationKind.Custom);
             Assert.That(app.Session.Document.Cues[app.SelectedCue].Formation.Kind, Is.EqualTo(FormationKind.Custom));

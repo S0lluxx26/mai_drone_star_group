@@ -26,6 +26,10 @@ namespace DroneStar.App
         [SerializeField] AmbientScore score;
         [SerializeField] WebBridge bridge;
         [SerializeField, Range(0.5f, 3f)] float ledIntensity = 1f;
+        [Tooltip("The model shape pack (Data/ShapePack.bytes, exported from Draw_in_3D by tools/export-shape-pack.mjs).")]
+        [SerializeField] TextAsset shapePack;
+        [Tooltip("Pre-solved flagship transitions (Data/DemoAssignments.bytes), so the demo plays at once on every device.")]
+        [SerializeField] TextAsset demoAssignments;
 
         readonly ShowCompiler compiler = new ShowCompiler();
         readonly Stopwatch stopwatch = new Stopwatch();
@@ -62,6 +66,9 @@ namespace DroneStar.App
         public Vector3 Focus { get; private set; } = ShowCameraRig.DefaultFocus;
         public float FocusRadius { get; private set; } = 30f;
 
+        /// <summary>The drone the close-up camera follows, or -1.</summary>
+        public int FollowedDrone { get; private set; } = -1;
+
         public DroneSwarmRenderer Swarm => swarm;
         public ShowCameraRig CameraRig => cameraRig;
         public DemoDirector Demo => demo;
@@ -78,6 +85,8 @@ namespace DroneStar.App
         {
             Application.targetFrameRate = 60;
             Library = new ShowLibrary();
+            LoadBundledData();
+            if (swarm != null && (WebBridge.IsWeb || Application.isMobilePlatform)) swarm.DetailedCapacity = 128;
             Session = new ShowEditSession(DemoShows.StarGroupNight());
             Session.Changed += OnDocumentChanged;
             if (demo != null) demo.Initialize(this, cameraRig, score);
@@ -93,6 +102,25 @@ namespace DroneStar.App
         {
             if (ui != null) ui.Bind(this);
             if (WantsAutoDemo()) StartCoroutine(BeginDemoWhenReady());
+        }
+
+        /// <summary>Registers the model shapes and the pre-solved demo transitions before the first compile.</summary>
+        void LoadBundledData()
+        {
+            try
+            {
+                if (shapePack != null) ShapeLibrary.LoadPack(shapePack.bytes);
+                else Debug.LogWarning("[DroneStar] No shape pack assigned: model formations will park their drones.");
+            }
+            catch (FormatException e)
+            {
+                Debug.LogError("[DroneStar] The shape pack is damaged: " + e.Message);
+            }
+            if (demoAssignments != null)
+            {
+                int entries = compiler.ImportCache(demoAssignments.bytes);
+                if (entries == 0) Debug.LogWarning("[DroneStar] The baked demo assignments could not be read; the demo will be planned live.");
+            }
         }
 
         static bool WantsAutoDemo()
@@ -166,15 +194,19 @@ namespace DroneStar.App
                 return;
             }
 
+            if (Show != null && Show.DroneCount != job.Result.DroneCount) StopCloseUp();
             Show = job.Result;
             compiledRevision = jobRevision;
             job = null;
             Clock.Seek(Clock.Time, Show.Duration);
-            if (environment != null) environment.SetPads(ToUnity(Show.PadPositions));
+            Vector3[] pads = ToUnity(Show.PadPositions);
+            if (environment != null) environment.SetPads(pads);
+            if (swarm != null) swarm.SetPads(pads);
             // Any recompile can move drones, so old trail history would draw streaks to stale positions.
             resetTrails = true;
             forceRender = true;
-            validator = new SafetyValidator(Show, WebBridge.IsWeb ? 0.1f : SafetyValidator.DefaultStep);
+            // 10 Hz on the web and for large fleets (closest approach is still solved between samples).
+            validator = new SafetyValidator(Show, WebBridge.IsWeb || Show.DroneCount > 1000 ? 0.1f : SafetyValidator.DefaultStep);
             Report = null;
             ShowCompiled?.Invoke();
         }
@@ -291,11 +323,75 @@ namespace DroneStar.App
 
         // ------------------------------------------------------------------ cue editing
 
-        public void AddCue(FormationKind kind)
+        /// <summary>Inserts a new cue after the selection; <paramref name="model"/> picks the shape for Model cues.</summary>
+        public void AddCue(FormationKind kind, string model = null)
         {
             int at = SelectedCue < 0 ? Session.Document.Cues.Count : SelectedCue + 1;
-            Session.Edit("Add " + kind, d => d.Cues.Insert(Mathf.Min(at, d.Cues.Count), DemoShows.NewCue(kind, d.Cues.Count)));
+            string label = kind == FormationKind.Model ? model ?? "Robot" : DemoShows.KindLabel(kind);
+            Session.Edit("Add " + label, d => d.Cues.Insert(Mathf.Min(at, d.Cues.Count), DemoShows.NewCue(kind, d.Cues.Count, d, model ?? "Robot")));
             Select(at);
+        }
+
+        /// <summary>Grows the selected cue's shape until it lights every drone (none left parked dark).</summary>
+        public void FitSelectedToFleet()
+        {
+            if (!ValidCue(SelectedCue)) return;
+            ShowDocument doc = Session.Document;
+            Cue cue = doc.Cues[SelectedCue];
+            HoldMotion.Envelope(cue.Motion, out float growth, out float margin);
+            float size = FormationGenerator.SizeToLight(cue.Formation, doc.DroneCount, doc.Limits.FormationSpacing, growth, margin);
+            if (Mathf.Abs(size - cue.Formation.Size) < 0.05f) return;
+            int index = SelectedCue;
+            Session.Edit("Enlarge to light all", d => d.Cues[index].Formation.Size = size);
+            if (size >= ShowBounds.MaxSize - 0.01f) Notify("Even at its largest this shape cannot hold every drone; add layers or pick another shape.", false);
+        }
+
+        /// <summary>Changes the fleet size and rescales every shape, altitude and limit to suit it.</summary>
+        public void SetFleetSize(int count)
+        {
+            count = Mathf.Clamp(count, 1, ShowBounds.MaxDrones);
+            if (count == Session.Document.DroneCount) return;
+            Session.Edit("Fleet of " + count, d => ShowScaler.ResizeForDroneCount(d, count));
+            Notify("Resized the show for " + count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " drones", false);
+        }
+
+        /// <summary>
+        /// Close-up: the orbit camera follows one lit drone on the audience side of the current formation, a few
+        /// metres away, so the airframe, its spinning props and LED bulb can be seen in flight. Pressing again
+        /// moves to a neighbouring drone.
+        /// </summary>
+        public void FrameCloseUp()
+        {
+            int n = Mathf.Min(positions.Length, colors.Length);
+            if (Show == null || n == 0 || cameraRig == null) return;
+            Vector3 target = Focus + new Vector3(FocusRadius * 0.3f, -FocusRadius * 0.15f, -FocusRadius * 1.5f);
+            int best = -1;
+            float bestDistance = float.MaxValue;
+            for (int pass = 0; pass < 2 && best < 0; pass++)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    if ((i == FollowedDrone && cameraRig.IsFollowing) || (pass == 0 && colors[i].maxColorComponent < 0.05f)) continue;
+                    float d = (positions[i] - target).sqrMagnitude;
+                    if (d < bestDistance)
+                    {
+                        bestDistance = d;
+                        best = i;
+                    }
+                }
+            }
+            if (best < 0) return;
+            FollowedDrone = best;
+            int index = best;
+            cameraRig.Follow(() => index < positions.Length ? positions[index] : Focus, 2.8f);
+            Notify("Following drone " + (best + 1) + ". Drag to orbit, scroll to zoom, F to frame the formation.", false);
+        }
+
+        /// <summary>Leaves the close-up (the followed drone's index means nothing in a different show).</summary>
+        void StopCloseUp()
+        {
+            FollowedDrone = -1;
+            if (cameraRig != null) cameraRig.StopFollowing();
         }
 
         public void DuplicateCue(int index)
@@ -351,6 +447,7 @@ namespace DroneStar.App
         public void NewFromTemplate(DemoShows.Template template)
         {
             if (demo != null && demo.IsRunning) demo.End();
+            StopCloseUp();
             Session.Load(template.Create(), markSaved: true);
             Clock.Pause();
             Clock.Seek(0f, float.MaxValue);
@@ -417,6 +514,7 @@ namespace DroneStar.App
                 return false;
             }
             if (demo != null && demo.IsRunning) demo.End();
+            StopCloseUp();
             Session.Load(doc, markSaved: true);
             Clock.Pause();
             Clock.Seek(0f, float.MaxValue);

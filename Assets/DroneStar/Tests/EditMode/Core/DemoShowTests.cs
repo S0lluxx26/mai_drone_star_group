@@ -32,7 +32,8 @@ namespace DroneStar.Tests
             {
                 Assert.That(t.Formation.LitCount, Is.EqualTo(show.DroneCount), show.Document.Cues[t.CueIndex].Name);
             }
-            Assert.That(show.Duration, Is.InRange(150f, 330f));
+            Assert.That(show.DroneCount, Is.EqualTo(2048));
+            Assert.That(show.Duration, Is.InRange(200f, 600f));
         }
 
         [Test]
@@ -43,7 +44,7 @@ namespace DroneStar.Tests
                 Cue cue = DemoShows.NewCue(kind, 3);
                 ShowSanitizer.SanitizeCue(cue);
                 Assert.That(cue.Formation.Kind, Is.EqualTo(kind));
-                Assert.That(cue.Name, Does.StartWith(DemoShows.KindLabel(kind)));
+                Assert.That(cue.Name, Does.StartWith(kind == FormationKind.Model ? "Robot" : DemoShows.KindLabel(kind)));
                 FormationResult f = FormationGenerator.Generate(cue.Formation, 200, 2.12f);
                 Assert.That(f.LitCount, Is.GreaterThan(20), kind + " lights a useful share of the drones");
             }

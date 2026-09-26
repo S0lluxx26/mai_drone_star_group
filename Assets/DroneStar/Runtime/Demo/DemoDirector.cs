@@ -15,6 +15,7 @@ namespace DroneStar.App
         public const float EndCardSeconds = 6f;
 
         // Shot types: 0 orbit, 1 shore push-in, 2 lake level, 3 high three-quarter, 4 side dolly.
+        // Every fifth scene (from the third) instead opens close beside one drone and pulls back to reveal it.
         static readonly int[] AllShots = { 0, 1, 2, 3, 4 };
         static readonly int[] FrontalShots = { 1, 0, 2 };
 
@@ -30,6 +31,10 @@ namespace DroneStar.App
         int captionCue = -1;
         Vector3 smoothedFocus;
         float smoothedRadius = 30f;
+        int revealCue = -1;
+        Slot revealSlot;
+        Vector3 padMin;
+        Vector3 padMax;
 
         public bool IsRunning { get; private set; }
         public event Action<bool> RunningChanged;
@@ -63,6 +68,7 @@ namespace DroneStar.App
             lastShot = int.MinValue;
             lastChimedCue = -1;
             captionCue = -1;
+            revealCue = -1;
             endCardTime = -1f;
             smoothedFocus = app.Focus;
             smoothedRadius = Mathf.Max(app.FocusRadius, 10f);
@@ -96,7 +102,9 @@ namespace DroneStar.App
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             ShowSegment seg = show.SegmentAt(t);
             int cue = seg != null ? seg.CueIndex : -1;
-            int shot = cue >= 0 ? cue : (seg != null && (seg.Kind == SegmentKind.Return || seg.Kind == SegmentKind.Landing || (seg.Kind == SegmentKind.Ground && t > 1f)) ? -2 : -1);
+            // The pre-show ground segment belongs to the launch shot; only the ground after landing ends the show.
+            bool afterLanding = seg != null && seg.Kind == SegmentKind.Ground && show.SegmentIndexAt(t) > 0;
+            int shot = cue >= 0 ? cue : (seg != null && (seg.Kind == SegmentKind.Return || seg.Kind == SegmentKind.Landing || afterLanding) ? -2 : -1);
 
             float follow = 1f - Mathf.Exp(-dt * 1.6f);
             smoothedFocus = Vector3.Lerp(smoothedFocus, app.Focus, follow);
@@ -107,6 +115,7 @@ namespace DroneStar.App
             {
                 shotStart = t;
                 lastShot = shot;
+                if (shot == -1) MeasurePads(show);
                 smoothedFocus = app.Focus;
                 smoothedRadius = Mathf.Max(app.FocusRadius, 8f);
             }
@@ -139,11 +148,16 @@ namespace DroneStar.App
             fov = 45f;
             if (shot == -1)
             {
-                // Launch: low on the barge's corner, looking up as the swarm climbs.
-                Vector3 pad = show.Document.Pad.Center.ToUnity();
-                position = pad + new Vector3(-38f, 2.5f, -62f) + new Vector3(tau * 0.8f, tau * 0.25f, 0f);
-                target = new Vector3(c.x, Mathf.Max(c.y, 6f), c.z);
-                fov = 55f;
+                // Launch: at the front corner of the pad grid, eye level with the first rows, so the nearest
+                // drones show their airframes and bulbs; the camera eases back and up as the swarm climbs.
+                float back = Mathf.Clamp01(tau / 24f);
+                back = back * back * (3f - 2f * back);
+                float w = Mathf.Max(padMax.x - padMin.x, padMax.z - padMin.z);
+                Vector3 corner = new Vector3(padMin.x, padMin.y, padMin.z);
+                position = corner + new Vector3(-2.2f, 1.1f, -3.4f) + new Vector3(-0.25f * w, 0.35f * w + 6f, -0.6f * w - 12f) * back;
+                Vector3 across = corner + new Vector3(0.35f * w, 1.2f + tau * 0.4f, 0.22f * w);
+                target = Vector3.Lerp(across, new Vector3(c.x, Mathf.Max(c.y, 6f), c.z), back);
+                fov = Mathf.Lerp(58f, 50f, back);
                 return;
             }
             if (shot == -2)
@@ -151,6 +165,11 @@ namespace DroneStar.App
                 position = new Vector3(0f, 24f, NightEnvironment.ShoreZ + 20f) + new Vector3(0f, 0f, tau * 1.2f);
                 target = c;
                 fov = 42f;
+                return;
+            }
+            if (IsReveal(shot, show))
+            {
+                Reveal(shot, show, out position, out target, out fov);
                 return;
             }
             // Flat shapes face the audience, so film them from the front; 3D shapes get the full shot list.
@@ -190,6 +209,64 @@ namespace DroneStar.App
                     fov = 48f;
                     break;
             }
+        }
+
+        /// <summary>Bounds of the launch grid, for the launch shot.</summary>
+        void MeasurePads(CompiledShow show)
+        {
+            padMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            padMax = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            foreach (System.Numerics.Vector3 p in show.PadPositions)
+            {
+                padMin = Vector3.Min(padMin, p.ToUnity());
+                padMax = Vector3.Max(padMax, p.ToUnity());
+            }
+            if (show.PadPositions.Length == 0) padMin = padMax = show.Document.Pad.Center.ToUnity();
+        }
+
+        static bool IsReveal(int cue, CompiledShow show) =>
+            cue % 5 == 2 && show.DroneCount >= 200 && cue < show.CueTimings.Count && show.CueTimings[cue].HoldSeconds >= 5f;
+
+        /// <summary>
+        /// Opens a few metres from a drone on the audience side of the incoming formation: the swarm flies in and
+        /// settles around the camera, then the camera pulls straight back to reveal the whole shape.
+        /// </summary>
+        void Reveal(int cue, CompiledShow show, out Vector3 position, out Vector3 target, out float fov)
+        {
+            CueTiming timing = show.CueTimings[cue];
+            FormationResult f = timing.Formation;
+            Vector3 center = f.Center.ToUnity();
+            float h = Mathf.Max(f.HalfSize, 5f);
+            if (revealCue != cue)
+            {
+                revealCue = cue;
+                Vector3 aim = center + new Vector3(0.3f * h, -0.2f * h, -1.5f * h);
+                float best = float.MaxValue;
+                revealSlot = f.Slots.Length > 0 ? f.Slots[0] : default;
+                foreach (Slot slot in f.Slots)
+                {
+                    if (slot.Dark) continue;
+                    float d = (slot.Position.ToUnity() - aim).sqrMagnitude;
+                    if (d < best)
+                    {
+                        best = d;
+                        revealSlot = slot;
+                    }
+                }
+            }
+            float t = app.Clock.Time;
+            float hold = timing.HoldSeconds;
+            // The anchor drone turns with the formation during the hold, so track where the motion takes it.
+            Cue source = show.Document.Cues[cue];
+            float local = Mathf.Clamp(t - timing.HoldStart, 0f, hold);
+            Vector3 revealAnchor = HoldMotion.Evaluate(source.Motion, f, revealSlot, local, source.HoldSeconds).ToUnity();
+            float u = Mathf.Clamp01((t - timing.HoldStart - hold * 0.25f) / Mathf.Max(hold * 0.7f, 1f));
+            u = u * u * (3f - 2f * u);
+            Vector3 near = revealAnchor + new Vector3(0.9f, 0.35f, -4.5f);
+            Vector3 far = center + new Vector3(0f, h * 0.12f, -(h * 2.6f + 45f));
+            position = Vector3.Lerp(near, far, u);
+            target = Vector3.Lerp(revealAnchor + (center - revealAnchor) * 0.12f, center, u);
+            fov = Mathf.Lerp(52f, 44f, u);
         }
 
         void UpdateOverlays(float t, CompiledShow show, ShowSegment seg, float dt)

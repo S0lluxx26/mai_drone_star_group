@@ -103,6 +103,42 @@ namespace DroneStar.App
             d.Add(DialogButtons(Ui.Button("Close", null, CloseDialog)));
         }
 
+        static readonly Dictionary<string, string> ModelNotes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Robot", "A friendly robot, arms out" },
+            { "Fish", "A tropical fish in stripes" },
+            { "Butterfly", "Wings in sunset colours" },
+            { "Hot air balloon", "A striped balloon and basket" },
+            { "Eiffel Tower", "The tower in gold, full height" },
+            { "Big ship", "An ocean liner under way" },
+            { "Whale", "A blue whale mid-breach" },
+            { "Firework star", "A bursting star shell" },
+            { "Row of fire", "A curtain of flames" },
+            { "Birthday cake", "Layers, icing and candles" },
+            { "Starship launch", "A rocket on a column of fire" },
+            { "Happy day", "A bright greeting banner" },
+        };
+
+        void ShowModelPicker()
+        {
+            VisualElement d = OpenDialog("Add a 3D model", "Full-colour models from the Draw_in_3D drone show. They scale to any fleet and keep their colours with the Model colours effect.");
+            var list = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
+            list.AddToClassList("ds-dialog-list");
+            foreach (ModelShape shape in ShapeLibrary.Shapes)
+            {
+                string name = shape.Name;
+                ModelNotes.TryGetValue(name, out string note);
+                list.Add(ListItem(name, note, () =>
+                {
+                    CloseDialog();
+                    app.AddCue(FormationKind.Model, name);
+                }));
+            }
+            if (list.childCount == 0) list.Add(Ui.Text("The model library is not loaded.", "ds-empty"));
+            d.Add(list);
+            d.Add(DialogButtons(Ui.Button("Close", null, CloseDialog)));
+        }
+
         void ShowOpen()
         {
             VisualElement d = OpenDialog("Open show", "Shows saved on " + app.Library.Location + ".");

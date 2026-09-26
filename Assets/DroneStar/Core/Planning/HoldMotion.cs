@@ -19,7 +19,7 @@ namespace DroneStar.Core
             margin = 0f;
             if (motion == null) return;
             if (motion.Kind == MotionKind.Breathe) growth = Math.Max(0f, motion.Amount);
-            else if (motion.Kind == MotionKind.Wave) margin = Math.Max(0f, motion.Amount);
+            else if (motion.Kind == MotionKind.Wave || motion.Kind == MotionKind.Rise) margin = Math.Max(0f, motion.Amount);
         }
 
         /// <summary>Hold position of a slot. Parked (dark) slots never move.</summary>
@@ -44,6 +44,12 @@ namespace DroneStar.Core
                     float grow = motion.Amount * 0.5f * (1f - MathF.Cos(ShowMath.TwoPi * motion.FrequencyHz * tau));
                     return frame.Center + offset * (1f + grow);
                 }
+                case MotionKind.Rise:
+                {
+                    // The motion clock runs 0 → hold − ramp, so this climbs Amount metres, easing in and out.
+                    float travel = Math.Max(hold - Math.Min(RampSeconds, hold * 0.5f), 1e-3f);
+                    return basePosition + Vector3.UnitY * (motion.Amount * ShowMath.Clamp01(tau / travel));
+                }
                 case MotionKind.Wave:
                 {
                     float ramp = Math.Min(RampSeconds, hold * 0.5f);
@@ -59,7 +65,7 @@ namespace DroneStar.Core
         }
 
         /// <summary>Upper bound on the extra speed a hold motion adds to a slot, used for inspector hints.</summary>
-        public static float PeakSpeed(MotionSpec motion, FormationResult frame)
+        public static float PeakSpeed(MotionSpec motion, FormationResult frame, float hold = 8f)
         {
             if (motion == null || frame == null) return 0f;
             float radius = 0f;
@@ -80,6 +86,8 @@ namespace DroneStar.Core
                     return motion.Amount * 0.5f * ShowMath.TwoPi * motion.FrequencyHz * radius;
                 case MotionKind.Wave:
                     return motion.Amount * ShowMath.TwoPi * motion.FrequencyHz;
+                case MotionKind.Rise:
+                    return 1.5f * motion.Amount / Math.Max(hold - Math.Min(RampSeconds, hold * 0.5f), 1e-3f);
                 default:
                     return 0f;
             }

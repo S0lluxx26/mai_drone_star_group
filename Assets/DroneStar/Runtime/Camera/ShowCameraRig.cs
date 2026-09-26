@@ -12,7 +12,8 @@ namespace DroneStar.App
     }
 
     /// <summary>
-    /// Studio camera. Orbit: drag to orbit, right/middle-drag to pan, wheel or pinch to zoom.
+    /// Studio camera. Orbit: drag to orbit, right/middle-drag to pan, wheel or pinch to zoom; the orbit can
+    /// follow a moving point (a drone, for close-ups) until the user pans or frames something else.
     /// Audience and Aerial are fixed vantage points; Cinematic follows poses fed by the demo director.
     /// </summary>
     [RequireComponent(typeof(Camera))]
@@ -40,8 +41,14 @@ namespace DroneStar.App
         Vector3 cinematicTarget = DefaultFocus;
         float cinematicFov = 45f;
         bool snapNext = true;
+        Func<Vector3> follow;
+        Vector3 savedFocus;
+        float savedDistance, savedYaw, savedPitch;
 
         public CameraMode Mode { get; private set; } = CameraMode.Orbit;
+
+        /// <summary>True while the orbit camera is following a moving point.</summary>
+        public bool IsFollowing => follow != null && Mode == CameraMode.Orbit;
 
         /// <summary>Set by the app: returns true when a screen point (pixels, bottom-left origin) is over the UI.</summary>
         public Func<Vector2, bool> IsPointerOverUi { get; set; }
@@ -62,6 +69,7 @@ namespace DroneStar.App
         {
             if (mode == Mode) return;
             Mode = mode;
+            if (mode != CameraMode.Orbit) StopFollowing();
             snapNext = mode == CameraMode.Cinematic;
             ModeChanged?.Invoke(mode);
         }
@@ -69,13 +77,46 @@ namespace DroneStar.App
         /// <summary>Frames a sphere in Orbit mode (e.g. the selected formation).</summary>
         public void Frame(Vector3 center, float radius)
         {
+            follow = null;
             focus = center;
             distance = Mathf.Clamp(radius * 3.2f + 25f, 25f, 700f);
             if (Mode != CameraMode.Orbit) SetMode(CameraMode.Orbit);
         }
 
+        /// <summary>Orbits <paramref name="dist"/> metres from a moving point, seen from the audience side.</summary>
+        public void Follow(Func<Vector3> target, float dist)
+        {
+            if (target == null) return;
+            if (follow == null)
+            {
+                // Remember the orbit this close-up interrupts, to return to it afterwards.
+                savedFocus = focus;
+                savedDistance = distance;
+                savedYaw = yaw;
+                savedPitch = pitch;
+            }
+            follow = target;
+            focus = target();
+            distance = dist;
+            yaw = 22f;
+            pitch = 8f;
+            if (Mode != CameraMode.Orbit) SetMode(CameraMode.Orbit);
+        }
+
+        /// <summary>Ends a close-up and returns to the orbit it interrupted.</summary>
+        public void StopFollowing()
+        {
+            if (follow == null) return;
+            follow = null;
+            focus = savedFocus;
+            distance = savedDistance;
+            yaw = savedYaw;
+            pitch = savedPitch;
+        }
+
         public void ResetView()
         {
+            follow = null;
             focus = DefaultFocus;
             yaw = 0f;
             pitch = 9f;
@@ -119,6 +160,7 @@ namespace DroneStar.App
                     targetFov = cinematicFov;
                     break;
                 default:
+                    if (follow != null) focus = follow();
                     targetRotation = Quaternion.Euler(pitch, yaw, 0f);
                     targetPosition = focus + targetRotation * new Vector3(0f, 0f, -distance);
                     targetFov = 50f;
@@ -194,7 +236,8 @@ namespace DroneStar.App
                 float pinch = Vector2.Distance(a.position, b.position);
                 if (lastPinch > 0f && pinch > 0f) Zoom((lastPinch - pinch) / 60f);
                 lastPinch = pinch;
-                Pan((a.deltaPosition + b.deltaPosition) * 0.5f);
+                // While following a drone two fingers only zoom; panning would drop the close-up.
+                if (follow == null) Pan((a.deltaPosition + b.deltaPosition) * 0.5f);
             }
         }
 
@@ -206,17 +249,23 @@ namespace DroneStar.App
 
         void Pan(Vector2 delta)
         {
+            if (delta.sqrMagnitude > 0.01f && follow != null)
+            {
+                // Panning away from a followed drone keeps the view where it is, at a normal orbit range.
+                follow = null;
+                distance = Mathf.Max(distance, 8f);
+            }
             Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
             float scale = distance * panSensitivity;
             focus -= rot * new Vector3(delta.x, delta.y, 0f) * scale;
-            focus.y = Mathf.Clamp(focus.y, 0f, 220f);
+            focus.y = Mathf.Clamp(focus.y, 0f, 400f);
             focus.x = Mathf.Clamp(focus.x, -600f, 600f);
             focus.z = Mathf.Clamp(focus.z, -600f, 600f);
         }
 
         void Zoom(float amount)
         {
-            distance = Mathf.Clamp(distance * (1f + amount * zoomSensitivity), 12f, 900f);
+            distance = Mathf.Clamp(distance * (1f + amount * zoomSensitivity), follow != null ? 1.5f : 8f, 1100f);
         }
     }
 }

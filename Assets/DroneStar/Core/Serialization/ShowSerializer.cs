@@ -50,6 +50,7 @@ namespace DroneStar.Core
                     .Set("pitch", f.PitchDegrees)
                     .Set("layers", f.Layers)
                     .Set("text", f.Text)
+                    .Set("model", f.Model)
                     .Set("points", f.Points)
                     .Set("turns", f.Turns);
                 // Written whenever present (not only for Custom) so switching shapes and back loses nothing.
@@ -166,6 +167,7 @@ namespace DroneStar.Core
                 spec.PitchDegrees = f.GetFloat("pitch", spec.PitchDegrees);
                 spec.Layers = f.GetInt("layers", spec.Layers);
                 spec.Text = f.GetString("text", spec.Text);
+                spec.Model = f.GetString("model", spec.Model);
                 spec.Points = f.GetInt("points", spec.Points);
                 spec.Turns = f.GetFloat("turns", spec.Turns);
                 JsonValue pts = f.Get("customPoints");

@@ -125,6 +125,11 @@ namespace DroneStar.App
             foreach (FormationKind kind in Enum.GetValues(typeof(FormationKind)))
             {
                 FormationKind k = kind;
+                if (kind == FormationKind.Model)
+                {
+                    grid.Add(Ui.Button("3D Model", null, ShowModelPicker, "ds-btn--small ds-add-kind ds-btn--accent", "Pick a full-colour 3D model (robot, whale, Eiffel Tower...)"));
+                    continue;
+                }
                 string label = DemoShows.KindLabel(kind);
                 grid.Add(Ui.Button(label, null, () => app.AddCue(k), "ds-btn--small ds-add-kind", "Insert a " + label + " cue after the selection"));
             }
@@ -272,6 +277,9 @@ namespace DroneStar.App
             bindings.Add(cam);
             transport.Add(cam);
             transport.Add(Ui.Button(null, Icon.Target, app.FrameSelection, null, "Frame the selected formation (F)"));
+            var closeUp = Ui.Button("Close-up", null, app.FrameCloseUp, null, "Fly next to a drone and follow it (4). Press again for a neighbour.");
+            bindings.Add(new Binding(() => closeUp.EnableInClassList("ds-btn--toggled", app.CameraRig.IsFollowing)));
+            transport.Add(closeUp);
             var trails = Ui.Button("Trails", null, () =>
             {
                 app.Swarm.TrailsEnabled = !app.Swarm.TrailsEnabled;

@@ -18,6 +18,9 @@ namespace DroneStar.Core
 
         /// <summary>A parked reserve slot: the drone holds here with its LED off.</summary>
         public bool Dark;
+
+        /// <summary>Baked colour for model formations (black when the shape has none).</summary>
+        public LedColor Art;
     }
 
     public sealed class FormationResult
@@ -44,15 +47,30 @@ namespace DroneStar.Core
     /// </summary>
     public static class FormationGenerator
     {
+        /// <summary>
+        /// Bump whenever the generated layouts change: shipped assignment caches (the baked demo) are keyed by
+        /// it, and the BakedDemoAssignments test fails until they are re-baked.
+        /// </summary>
+        public const int Revision = 3;
+
         struct Pt
         {
             public Vector3 P;
             public float U;
+            public LedColor Art;
 
             public Pt(Vector3 p, float u)
             {
                 P = p;
                 U = u;
+                Art = default;
+            }
+
+            public Pt(Vector3 p, float u, LedColor art)
+            {
+                P = p;
+                U = u;
+                Art = art;
             }
         }
 
@@ -149,6 +167,39 @@ namespace DroneStar.Core
             }
         }
 
+        /// <summary>
+        /// The size at which the shape lights all <paramref name="droneCount"/> drones: <c>spec.Size</c> if it
+        /// already does, otherwise the smallest larger size found (to about 1 %, plus 1 % head-room), capped at
+        /// <see cref="ShowBounds.MaxSize"/>. Used to size new model cues for the fleet and by "Enlarge to light all".
+        /// </summary>
+        public static float SizeToLight(FormationSpec spec, int droneCount, float spacing, float reserveGrowth = 0f, float reserveMargin = 0f)
+        {
+            if (spec == null) throw new ArgumentNullException(nameof(spec));
+            FormationSpec probe = spec.Clone();
+            bool Lights(float size)
+            {
+                probe.Size = size;
+                return Generate(probe, droneCount, spacing, reserveGrowth, reserveMargin).LitCount >= droneCount;
+            }
+            float lo = ShowMath.Clamp(ShowMath.IsFinite(spec.Size) ? spec.Size : ShowBounds.MinSize, ShowBounds.MinSize, ShowBounds.MaxSize);
+            if (Lights(lo)) return lo;
+            float hi = lo;
+            do
+            {
+                lo = hi;
+                hi = Math.Min(ShowBounds.MaxSize, hi * 1.3f);
+                if (hi <= lo) return ShowBounds.MaxSize;
+            }
+            while (!Lights(hi));
+            while (hi - lo > hi * 0.01f)
+            {
+                float mid = 0.5f * (lo + hi);
+                if (Lights(mid)) hi = mid;
+                else lo = mid;
+            }
+            return Math.Min(ShowBounds.MaxSize, hi * 1.01f);
+        }
+
         /// <param name="reserveGrowth">Fraction the formation may grow while holding (Breathe), so parked drones stay clear.</param>
         /// <param name="reserveMargin">Extra metres the formation may move while holding (Wave).</param>
         public static FormationResult Generate(FormationSpec spec, int droneCount, float spacing, float reserveGrowth = 0f, float reserveMargin = 0f)
@@ -159,13 +210,16 @@ namespace DroneStar.Core
             float half = Math.Max(ShowMath.IsFinite(spec.Size) ? spec.Size : 1f, 1f) * 0.5f;
 
             List<Pt> lit = droneCount == 0 ? new List<Pt>() : GreedyThin(BuildLit(spec, droneCount, spacing, half), spacing);
-            // Crossings and junctions can thin a few points away; ask for more and keep the best fit.
-            for (int attempt = 0; attempt < 2 && lit.Count > 0 && lit.Count < droneCount; attempt++)
+            // Crossings, junctions and sharp corners can thin a few points away. Ask for progressively more
+            // and keep the best fit. A large shortfall means the shape is simply full at this spacing, so one
+            // try is enough there; a small one gets several (the count after thinning is not monotonic).
+            int request = droneCount;
+            int attempts = droneCount - lit.Count <= Math.Max(8, droneCount / 50) ? 5 : 1;
+            for (int attempt = 0; attempt < attempts && lit.Count > 0 && lit.Count < droneCount; attempt++)
             {
-                int deficit = droneCount - lit.Count;
-                List<Pt> more = GreedyThin(BuildLit(spec, droneCount + deficit * 2, spacing, half), spacing);
-                if (more.Count <= lit.Count) break;
-                lit = more;
+                request += (droneCount - lit.Count) * 2 + 4 * (attempt + 1);
+                List<Pt> more = GreedyThin(BuildLit(spec, request, spacing, half), spacing);
+                if (more.Count > lit.Count) lit = more;
             }
             if (lit.Count > droneCount) lit = StridePick(lit, droneCount);
 
@@ -185,7 +239,7 @@ namespace DroneStar.Core
             for (int i = 0; i < lit.Count; i++)
             {
                 Vector3 world = spec.Center + Vector3.Transform(lit[i].P, q);
-                result.Slots[i] = new Slot { Position = world, Local = lit[i].P / half, U = ShowMath.Frac(lit[i].U), Dark = false };
+                result.Slots[i] = new Slot { Position = world, Local = lit[i].P / half, U = ShowMath.Frac(lit[i].U), Dark = false, Art = lit[i].Art };
                 reach = Math.Max(reach, lit[i].P.Length());
             }
 
@@ -206,24 +260,43 @@ namespace DroneStar.Core
                 }
             }
 
-            result.MinSpacing = MinDistance(result.Slots);
+            result.MinSpacing = MinDistance(result.Slots, Math.Max(spacing * 4f, 4f));
             return result;
         }
 
-        /// <summary>Exact smallest pairwise distance (brute force; formations hold at most 1000 slots).</summary>
-        public static float MinDistance(Slot[] slots)
+        /// <summary>
+        /// Smallest pairwise distance, exact whenever it is below <paramref name="searchRadius"/> (hash-grid
+        /// search); +∞ means every pair is at least that far apart.
+        /// </summary>
+        public static float MinDistance(Slot[] slots, float searchRadius = 8f)
         {
-            float best = float.PositiveInfinity;
-            for (int i = 0; i < slots.Length; i++)
+            if (slots.Length < 2) return float.PositiveInfinity;
+            var positions = new Vector3[slots.Length];
+            for (int i = 0; i < slots.Length; i++) positions[i] = slots[i].Position;
+            var grid = new SpatialGrid();
+            grid.Build(positions, positions.Length, searchRadius);
+            float best = searchRadius * searchRadius;
+            bool found = false;
+            for (int i = 0; i < positions.Length; i++)
             {
-                Vector3 a = slots[i].Position;
-                for (int j = i + 1; j < slots.Length; j++)
+                grid.CellOf(positions[i], out int cx, out int cy, out int cz);
+                for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                for (int dz = -1; dz <= 1; dz++)
                 {
-                    float d = Vector3.DistanceSquared(a, slots[j].Position);
-                    if (d < best) best = d;
+                    for (int j = grid.First(cx + dx, cy + dy, cz + dz); j >= 0; j = grid.Next(j))
+                    {
+                        if (j <= i) continue;
+                        float d = Vector3.DistanceSquared(positions[i], positions[j]);
+                        if (d < best)
+                        {
+                            best = d;
+                            found = true;
+                        }
+                    }
                 }
             }
-            return float.IsPositiveInfinity(best) ? best : MathF.Sqrt(best);
+            return found ? MathF.Sqrt(best) : float.PositiveInfinity;
         }
 
         static List<Pt> BuildLit(FormationSpec spec, int n, float spacing, float half)
@@ -238,7 +311,7 @@ namespace DroneStar.Core
             for (int k = 0; k < layers; k++)
             {
                 float z = (k - (layers - 1) * 0.5f) * dz;
-                foreach (Pt p in sheet) all.Add(new Pt(p.P + new Vector3(0f, 0f, z), p.U));
+                foreach (Pt p in sheet) all.Add(new Pt(p.P + new Vector3(0f, 0f, z), p.U, p.Art));
             }
             return all.Count > n ? StridePick(all, n) : all;
         }
@@ -282,6 +355,8 @@ namespace DroneStar.Core
                     return filled ? CubeSurface(n, spacing, half) : SamplePolylines(CubeEdges(half), n, spacing);
                 case FormationKind.Custom:
                     return CustomShape(spec.CustomPoints, half, n, spacing);
+                case FormationKind.Model:
+                    return ModelPoints(spec.Model, half, n, spacing);
                 default:
                     return new List<Pt>();
             }
@@ -324,16 +399,19 @@ namespace DroneStar.Core
             foreach (Polyline line in lines) total += line.Length;
             if (n <= 0 || total <= 1e-5f) return result;
 
-            int target = Math.Min(n, Math.Max(1, (int)MathF.Floor(total / spacing)));
+            // Symmetric shapes give equal lengths up to the last bit, and those bits differ between runtimes:
+            // floors ignore values a hair below an integer and equal remainders go to the first line, so the
+            // allocation (and the layout) is the same everywhere.
+            int target = Math.Min(n, Math.Max(1, FloorStable(total / spacing)));
             int[] quota = new int[lines.Count];
             int[] cap = new int[lines.Count];
             float[] remainder = new float[lines.Count];
             int assigned = 0;
             for (int i = 0; i < lines.Count; i++)
             {
-                cap[i] = lines[i].Length > 1e-5f ? Math.Max(1, (int)MathF.Floor(lines[i].Length / spacing)) : 0;
+                cap[i] = lines[i].Length > 1e-5f ? Math.Max(1, FloorStable(lines[i].Length / spacing)) : 0;
                 float raw = target * lines[i].Length / total;
-                quota[i] = Math.Min(cap[i], (int)MathF.Floor(raw));
+                quota[i] = Math.Min(cap[i], FloorStable(raw));
                 remainder[i] = raw - quota[i];
                 assigned += quota[i];
             }
@@ -343,7 +421,7 @@ namespace DroneStar.Core
                 for (int i = 0; i < lines.Count; i++)
                 {
                     if (quota[i] >= cap[i]) continue;
-                    if (pick < 0 || remainder[i] > remainder[pick]) pick = i;
+                    if (pick < 0 || remainder[i] > remainder[pick] + 1e-4f) pick = i;
                 }
                 if (pick < 0) break;
                 quota[pick]++;
@@ -398,6 +476,7 @@ namespace DroneStar.Core
                     if (LatticeCount(region, mid) >= n) lo = mid;
                     else hi = mid;
                 }
+                lo = SettlePitch(d => LatticeCount(region, d), lo, n);
                 pts = StridePick(LatticePoints(region, lo), n);
             }
             foreach (Vector2 p in pts)
@@ -406,6 +485,27 @@ namespace DroneStar.Core
             }
             return result;
         }
+
+        /// <summary>
+        /// Moves a bisected pitch off the knife edge where the lattice count changes. There some lattice point
+        /// sits on the region's edge to within rounding, and runtimes that round differently (.NET, Mono,
+        /// WebAssembly) would keep different points; shipped assignments rely on identical layouts everywhere.
+        /// Settles on a slightly smaller pitch whose count does not change within ±0.001 % either side.
+        /// </summary>
+        static float SettlePitch(Func<float, int> count, float pitch, int n)
+        {
+            float p = pitch;
+            for (int attempt = 0; attempt < 12; attempt++)
+            {
+                p *= 0.9995f;
+                int c = count(p);
+                if (c >= n && count(p * 1.00001f) == c && count(p * 0.99999f) == c) return p;
+            }
+            return pitch;
+        }
+
+        /// <summary>Floor that treats values within a few millionths below an integer as that integer.</summary>
+        static int FloorStable(float x) => (int)MathF.Floor(x + Math.Abs(x) * 2e-6f + 1e-6f);
 
         static int LatticeCount(Region region, float d)
         {
@@ -806,7 +906,81 @@ namespace DroneStar.Core
             }
             var region = new Region { Inside = p => InPolygon(polygon, p) };
             Bounds(polygon, out region.MinX, out region.MaxX, out region.MinY, out region.MaxY);
-            return LatticeFill(region, n, spacing);
+            var ring = new Vector3[polygon.Length];
+            for (int i = 0; i < polygon.Length; i++) ring[i] = new Vector3(polygon[i].X, polygon[i].Y, 0f);
+            var outline = new List<Polyline> { new Polyline(ring, true) };
+            return OutlinedFill(region, outline, n, spacing);
+        }
+
+        /// <summary>
+        /// A filled shape the way show designers draw it: one crisp row of drones evenly spaced along the
+        /// outline, with a hexagonal lattice filling the inside, kept a pitch away from the edge so the
+        /// silhouette reads cleanly instead of showing the lattice's jagged rows. The pitch is the largest
+        /// that still places n drones, and never below <paramref name="spacing"/>.
+        /// </summary>
+        static List<Pt> OutlinedFill(Region region, List<Polyline> outline, int n, float spacing)
+        {
+            var result = new List<Pt>();
+            if (n <= 0) return result;
+            float perimeter = 0f;
+            foreach (Polyline line in outline) perimeter += line.Length;
+            var edges = new List<(Vector2 a, Vector2 b)>();
+            foreach (Polyline line in outline)
+            {
+                int segments = line.Closed ? line.Points.Length : line.Points.Length - 1;
+                for (int i = 0; i < segments; i++)
+                {
+                    Vector3 a = line.Points[i], b = line.Points[(i + 1) % line.Points.Length];
+                    edges.Add((new Vector2(a.X, a.Y), new Vector2(b.X, b.Y)));
+                }
+            }
+
+            // Edges bucketed on a grid, so the rim test looks only at edges near each lattice point.
+            var near = new EdgeGrid(edges, spacing * 2f);
+
+            // Keep the fill at least one drone spacing inside the rim.
+            bool Deep(Vector2 p, float d) => !near.AnyWithin(p, Math.Max(0.87f * d, spacing));
+
+            int Count(float d)
+            {
+                int inner = 0;
+                EnumerateLattice(region, d, p =>
+                {
+                    if (Deep(p, d)) inner++;
+                });
+                return (int)MathF.Floor(perimeter / d) + inner;
+            }
+
+            float pitch = spacing;
+            if (Count(spacing) > n)
+            {
+                float lo = spacing, hi = spacing * 2f;
+                for (int guard = 0; guard < 24 && Count(hi) >= n; guard++)
+                {
+                    lo = hi;
+                    hi *= 2f;
+                }
+                // A thousandth of the pitch is far finer than the lattice can resolve.
+                for (int iter = 0; iter < 30 && hi - lo > lo * 1e-3f; iter++)
+                {
+                    float mid = 0.5f * (lo + hi);
+                    if (Count(mid) >= n) lo = mid;
+                    else hi = mid;
+                }
+                pitch = SettlePitch(Count, lo, n);
+            }
+
+            List<Pt> rim = SamplePolylines(outline, Math.Min(n, (int)MathF.Floor(perimeter / pitch)), pitch);
+            var inside = new List<Vector2>();
+            EnumerateLattice(region, pitch, p =>
+            {
+                if (Deep(p, pitch)) inside.Add(p);
+            });
+            int room = Math.Max(0, n - rim.Count);
+            inside = StridePick(inside, room);
+            result.AddRange(rim);
+            foreach (Vector2 p in inside) result.Add(new Pt(new Vector3(p.X, p.Y, 0f), AngleU(p)));
+            return result;
         }
 
         static Vector2[] StarPolygon(int points, float half)
@@ -885,10 +1059,14 @@ namespace DroneStar.Core
                     },
                     MinX = -half, MaxX = half, MinY = -0.8f * half, MaxY = 0.8f * half,
                 };
-                return LatticeFill(region, n, spacing);
+                return OutlinedFill(region, ButterflyOutline(half), n, spacing);
             }
+            return SamplePolylines(ButterflyOutline(half), n, spacing);
+        }
 
-            // Outline: the union boundary, i.e. each ellipse's rim minus the parts hidden inside another part.
+        /// <summary>The wing union's boundary: each ellipse rim minus the parts hidden inside another part.</summary>
+        static List<Polyline> ButterflyOutline(float half)
+        {
             var lines = new List<Polyline>();
             const int samples = 180;
             for (int e = 0; e < ButterflyParts.Length; e++)
@@ -931,7 +1109,7 @@ namespace DroneStar.Core
                 }
                 if (run.Count > 1) lines.Add(new Polyline(ToVector3(run.ToArray(), half), false));
             }
-            return SamplePolylines(lines, n, spacing);
+            return lines;
         }
 
         static Vector3[] ToVector3(Vector2[] pts, float scale)
@@ -994,6 +1172,27 @@ namespace DroneStar.Core
             return pts;
         }
 
+        /// <summary>
+        /// Walks a library model's farthest-point-ordered points, keeping each one that stays clear of those
+        /// already kept, until n are placed. Early points cover the whole model, so fewer drones still draw
+        /// the complete picture, just less densely.
+        /// </summary>
+        static List<Pt> ModelPoints(string name, float half, int n, float spacing)
+        {
+            var result = new List<Pt>();
+            if (!ShapeLibrary.TryGet(name, out ModelShape model) || n <= 0) return result;
+            int total = model.Points.Length;
+            int take = Math.Min(total, n);
+            while (true)
+            {
+                var candidates = new List<Pt>(take);
+                for (int i = 0; i < take; i++) candidates.Add(new Pt(model.Points[i] * half, (float)i / total, model.Colors[i]));
+                List<Pt> kept = GreedyThin(candidates, spacing);
+                if (kept.Count >= n || take >= total) return kept.Count > n ? kept.GetRange(0, n) : kept;
+                take = Math.Min(total, take + (n - kept.Count) * 2 + 16);
+            }
+        }
+
         static List<Pt> CustomShape(List<Vector3> points, float half, int n, float spacing)
         {
             var pts = new List<Pt>();
@@ -1006,6 +1205,57 @@ namespace DroneStar.Core
         }
 
         // ---------------------------------------------------------------- geometry helpers
+
+        /// <summary>Line segments bucketed on a uniform grid for "is any segment within r of p" queries.</summary>
+        sealed class EdgeGrid
+        {
+            readonly List<(Vector2 a, Vector2 b)> edges;
+            readonly Dictionary<long, List<int>> cells = new Dictionary<long, List<int>>();
+            readonly float cell;
+
+            public EdgeGrid(List<(Vector2 a, Vector2 b)> edges, float cellSize)
+            {
+                this.edges = edges;
+                cell = Math.Max(cellSize, 1e-3f);
+                for (int i = 0; i < edges.Count; i++)
+                {
+                    (Vector2 a, Vector2 b) = edges[i];
+                    int x0 = Cell(Math.Min(a.X, b.X)), x1 = Cell(Math.Max(a.X, b.X));
+                    int y0 = Cell(Math.Min(a.Y, b.Y)), y1 = Cell(Math.Max(a.Y, b.Y));
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        for (int y = y0; y <= y1; y++)
+                        {
+                            long key = Key(x, y);
+                            if (!cells.TryGetValue(key, out List<int> list)) cells[key] = list = new List<int>(4);
+                            list.Add(i);
+                        }
+                    }
+                }
+            }
+
+            int Cell(float v) => (int)MathF.Floor(v / cell);
+
+            static long Key(int x, int y) => ((long)x << 32) ^ (uint)y;
+
+            public bool AnyWithin(Vector2 p, float r)
+            {
+                float r2 = r * r;
+                int x0 = Cell(p.X - r), x1 = Cell(p.X + r), y0 = Cell(p.Y - r), y1 = Cell(p.Y + r);
+                for (int x = x0; x <= x1; x++)
+                {
+                    for (int y = y0; y <= y1; y++)
+                    {
+                        if (!cells.TryGetValue(Key(x, y), out List<int> list)) continue;
+                        foreach (int i in list)
+                        {
+                            if (SegmentDistanceSquared(p, edges[i].a, edges[i].b) < r2) return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        }
 
         static float SegmentDistanceSquared(Vector2 p, Vector2 a, Vector2 b)
         {

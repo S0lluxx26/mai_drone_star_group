@@ -64,6 +64,7 @@ namespace DroneStar.Core
             f.Points = ShowMath.Clamp(f.Points, ShowBounds.MinPoints, ShowBounds.MaxPoints);
             f.Turns = Finite(f.Turns, ShowBounds.MinTurns, ShowBounds.MaxTurns, 2f);
             f.Text = CleanText(f.Text, ShowBounds.MaxTextLength, "MAI");
+            f.Model = CleanText(f.Model, 40, "Robot");
             f.CustomPoints = f.CustomPoints ?? new List<Vector3>();
             f.CustomPoints.RemoveAll(v => !ShowMath.IsFinite(v));
             // Custom points are in normalised units (half-size = 1); keep them near the unit box.
@@ -88,7 +89,7 @@ namespace DroneStar.Core
             if (!Enum.IsDefined(typeof(MotionKind), m.Kind)) m.Kind = MotionKind.None;
             m.DegreesPerSecond = Finite(m.DegreesPerSecond, -ShowBounds.MaxSpin, ShowBounds.MaxSpin, 12f);
             m.FrequencyHz = Finite(m.FrequencyHz, 0f, ShowBounds.MaxFrequency, 0.25f);
-            float maxAmount = m.Kind == MotionKind.Breathe ? 0.5f : ShowBounds.MaxMotionAmount;
+            float maxAmount = m.Kind == MotionKind.Breathe ? 0.5f : m.Kind == MotionKind.Wave ? 12f : ShowBounds.MaxMotionAmount;
             m.Amount = Finite(m.Amount, 0f, maxAmount, 0.15f);
         }
 

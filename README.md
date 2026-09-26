@@ -5,31 +5,40 @@
 [**▶ Watch the demo run in your browser**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=1) ·
 [Open the studio](https://s0lluxx26.github.io/mai_drone_star_group/)
 
-![A Night of Stars — the flagship demo show over the lake](docs/media/hero.png)
+![The Eiffel Tower drawn by 2,048 drones in A Night of Stars, the flagship demo](docs/media/hero.png)
 
-Drone Star Studio is a complete show editor: lay out formations, colour them, give them motion,
-and the studio plans every flight path, checks the whole show for safety, and plays it back over a
-dark blue night lake with reflections, light trails, a 3D city skyline and a generated soundtrack.
+Drone Star Studio is a complete show editor for fleets of up to **4,096 drones**: lay out formations or
+full-colour 3D models, colour them, give them motion, and the studio plans every flight path, checks the
+whole show for safety, and plays it back over a dark blue night lake with reflections, light trails, a 3D
+city skyline and a generated soundtrack. Every drone is a detailed quadcopter with a glowing LED bulb
+underneath; fly the close-up camera beside one to watch its props spin as it leans into each move.
 Press **Demo Run** to watch the show as a cinematic presentation with titles, scene captions and camera cuts.
 
 | Editing a show | The demo run | Safety check |
 |---|---|---|
 | ![Editor](docs/media/editor.png) | ![Demo](docs/media/demo.png) | ![Safety](docs/media/safety.png) |
 
-| Sketch your own shape |
-|---|
-| ![Sketch](docs/media/sketch.png) |
+| Close-up beside a drone | Launch from the pads | Sketch your own shape |
+|---|---|---|
+| ![Close-up](docs/media/closeup.png) | ![Launch](docs/media/launch.png) | ![Sketch](docs/media/sketch.png) |
 
 ## What you can do
 
+- **Fleets from 10 to 4,096 drones** — presets (256 · 512 · 1K · 2K · 4K) resize every shape, altitude
+  and limit to suit the fleet, or set any count with the slider.
+- **12 full-colour 3D models** — robot, fish, butterfly, hot-air balloon, Eiffel Tower, ocean liner,
+  whale, firework star, row of fire, birthday cake, starship launch and a greeting banner, ported from
+  the [Draw_in_3D](https://github.com/S0lluxx26/Draw_in_3D) drone show. Each keeps its own colours (the *Model
+  colours* effect), draws the whole model at any fleet size, and is sized for your fleet when you add it.
+  **Enlarge to light all** grows any shape until no drone is left parked.
 - **12 formation families** — grid curtain, ring, sphere, star, heart, helix, spiral galaxy, wave, cube,
   text (A–Z, 0–9; accents such as *Hà* fold to *HA*), flower and butterfly — filled or outlined,
   with depth layers, turn/tilt, size and position.
 - **Sketch** — draw your own shape with the mouse or a finger (each stroke becomes a line of drones), or
   import `x,y[,z]` points from a CSV file.
-- **9 light effects** — solid, gradient, rainbow, chase, twinkle, pulse, radial, fire, off — from a
-  vivid palette or any hex colour, with tempo and brightness.
-- **Motion while holding** — turntable, roll, breathe and wave, eased in and out so drones never jerk.
+- **10 light effects** — solid, gradient, rainbow, chase, twinkle, pulse, radial, fire, model colours,
+  off — from a vivid palette or any hex colour, with tempo and brightness.
+- **Motion while holding** — turntable, roll, breathe, wave and rise, eased in and out so drones never jerk.
 - **Automatic flight planning** — every change is re-planned in the background: shortest legal
   transition times, optimal drone-to-slot matching and parking of surplus drones.
 - **Safety check** — the whole show is flown in simulation: closest approach between every pair of
@@ -37,7 +46,11 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
   finding one click away on the timeline.
 - **Undo/redo**, save on the device (in the browser's storage on the web), import/export `.dronestar.json`, export per-drone
   **trajectories (CSV)** and a **flight report (Markdown)**.
-- **Demo Run** — title card, a camera shot per scene, captions, soundtrack and an end card.
+- **Demo Run** — title card, a launch shot from among the pads, a camera shot per scene (some open beside a
+  single drone and pull back to reveal the shape), captions, soundtrack and an end card.
+- **Detailed drones** — the nearest drones are drawn as full quadcopters (shell, carbon arms, motors, prop
+  guards, twisted blades that spin in flight, skids and the LED bulb that lights their belly); the rest use a
+  light model, and each one leans into its direction of flight.
 
 ## How the flight planning works
 
@@ -45,31 +58,38 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
    √2 × the minimum separation apart (hexagonal lattices for filled shapes, arc-length sampling for
    outlines, parametric layouts for spheres, tori and cubes). Drones that do not fit park, dark,
    on a grid behind the shape instead of crowding it.
-2. **Optimal assignment.** Between two formations, drones are matched to their new slots with the
-   Hungarian algorithm, minimising the total *squared* distance. Assignments are cached by geometry,
-   so editing one cue only re-solves the two transitions that touch it.
+2. **Optimal assignment.** Between two formations, drones are matched to their new slots minimising the
+   total *squared* distance: exactly with the Hungarian algorithm up to 600 drones, and above that with
+   Bertsekas' ε-scaling auction followed by a pairwise-swap repair, which leaves no pair of drones that
+   would be better off swapping slots (about 1.5 s for 4,096 drones, spread over frames so the editor
+   stays smooth). Layouts and assignments are cached, so editing one cue only re-lays that cue and
+   re-solves the two transitions that touch it, and the built-in show ships pre-solved at 1K, 2K and 4K
+   drones (each baked entry records its cost, so a stale one is re-solved rather than trusted).
 3. **Synchronised straight lines.** All drones leave and arrive together along straight lines with a
-   minimum-jerk profile (zero velocity and acceleration at both ends). Optimal assignment + synchronised
-   straight lines + √2 spacing is the CAPT condition (Turpin, Michael & Kumar, 2014) that keeps
-   transitions collision-free.
+   minimum-jerk profile (zero velocity and acceleration at both ends). Swap-optimal assignment +
+   synchronised straight lines + √2 spacing is the CAPT condition (Turpin, Michael & Kumar, 2014) that
+   keeps transitions collision-free; it only needs every *pair* to be swap-optimal, which both solvers
+   guarantee.
 4. **Legal timing.** Auto transitions take the shortest time for which the peak speed
    (1.875·d/T) and peak acceleration (5.77·d/T²) stay inside the limits, plus 8 % head-room.
 5. **Independent verification.** The safety check does not trust any of the above: it re-flies the
-   compiled show at 20 Hz (10 Hz on the web) and tests the closest approach of every nearby pair
+   compiled show at 20 Hz (10 Hz on the web and above 1,000 drones) and tests the closest approach of every nearby pair
    between samples.
 
-The flagship demo (360 drones, 12 scenes, 4 min 5 s) passes with a closest pass of 1.56 m
-against a 1.5 m limit, a top speed of 7.4 m/s against 8 m/s and peak acceleration of 3.5 m/s²
-against 4 m/s². See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and
-[docs/REVIEW.md](docs/REVIEW.md) for the review log.
+The flagship demo, *A Night of Stars* (2,048 drones, 16 scenes, 5 min 51 s), passes with a closest pass
+of 1.28 m against a 1.2 m limit, a top speed of 11.1 m/s against 12 m/s and peak acceleration of
+4.8 m/s² against 5 m/s²; its 4,096-drone preset (7 min 10 s) passes with a closest pass of 1.23 m. The
+original 360-drone show is still there as the *Classic Night* template.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and [docs/REVIEW.md](docs/REVIEW.md) for
+the review log.
 
 ## Using the studio
 
 | | |
 |---|---|
-| **Left** | Show cues — select, reorder, duplicate, delete; add a formation at the bottom |
-| **Right** | Inspector: **Cue** (shape, timing, light, motion), **Show** (drones, limits, launch pad), **Safety** |
-| **Bottom** | Transport, speed, loop, camera (orbit / audience / aerial), trails, timeline scrubber |
+| **Left** | Show cues — select, reorder, duplicate, delete; add a formation or a **3D Model** at the bottom |
+| **Right** | Inspector: **Cue** (shape or model, timing, light, motion), **Show** (fleet, limits, launch pad), **Safety** |
+| **Bottom** | Transport, speed, loop, camera (orbit / audience / aerial / close-up), trails, timeline scrubber |
 
 | Keys | Action |
 |---|---|
@@ -81,6 +101,7 @@ against 4 m/s². See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design
 | Del | Delete the selected cue |
 | F | Frame the selected formation |
 | 1 / 2 / 3 | Orbit / audience / aerial camera |
+| 4 | Close-up: follow a drone (again for a neighbour) |
 | T | Light trails |
 | D / Esc | Start / leave the demo run |
 | Mouse | Drag to orbit, right-drag to pan, wheel to zoom |
@@ -94,9 +115,11 @@ Assets/DroneStar/
   Shaders/     URP shaders: LED glow + water reflections, night sky, lake, city windows, trails
   Editor/      ProjectBuilder: generates materials, post-processing, UI panel and the scene; builds
   Tests/       EditMode (core + project checks) and PlayMode (the running studio)
+  Data/        ShapePack.bytes (3D models) and DemoAssignments.bytes (pre-solved flagship transitions)
   UI/          Studio.uss stylesheet and theme
 Assets/WebGLTemplates/DroneStar/   Branded web loader
 tests/         dotnet projects that compile Core and its tests outside Unity
+tools/         export-shape-pack.mjs (models from Draw_in_3D), publish-pages.ps1
 docs/          Architecture notes and screenshots
 ```
 
@@ -106,8 +129,14 @@ Requires **Unity 6000.6.3f1** (Unity 6.6) with Web and Windows build support, an
 for the fast core tests.
 
 ```bash
-# Core algorithms (seconds, no Unity needed)
+# Core algorithms (a few minutes, no Unity needed)
 dotnet test tests/DroneStar.Core.Tests
+
+# After changing the flagship, the formations or FormationGenerator.Revision: re-bake its transitions
+dotnet test tests/DroneStar.Core.Tests --filter Name=BakeDemoAssignments
+
+# Re-export the 3D models from a Draw_in_3D checkout next to this repository
+node tools/export-shape-pack.mjs
 
 # Regenerate materials, post-processing, UI panel and the scene
 Unity -batchmode -quit -projectPath . -executeMethod DroneStar.EditorTools.ProjectBuilder.RebuildAll
@@ -122,7 +151,8 @@ Unity -batchmode -quit -projectPath . -executeMethod DroneStar.EditorTools.Proje
 ```
 
 A Windows build can capture screenshots unattended:
-`DroneStarStudio.exe -capture shots -captureTimes 20,60,120 [-demo] [-captureCamera audience]`.
+`DroneStarStudio.exe -capture shots -captureTimes 20,60,c4 [-demo] [-captureCamera audience|aerial|closeup] [-captureLive]`
+(`c4` = three seconds into scene 4's hold; `-captureLive` plays into each moment so drones lean and props turn).
 
 ### Unity MCP
 
@@ -134,8 +164,9 @@ so an MCP client such as Claude Code can drive the open editor: in Unity choose
 ## Show file format
 
 Shows are plain JSON (`*.dronestar.json`, format tag `dronestar-show`, version 1): title, author,
-drone count, safety limits, launch pad and an ordered list of cues, each with a formation, light,
-motion and timing block. Files are validated and clamped on load; unknown fields are ignored.
+drone count, safety limits, launch pad and an ordered list of cues, each with a formation (including the
+`model` name for 3D models), light, motion and timing block. Files are validated and clamped on load;
+unknown fields are ignored.
 
 ## License
 

@@ -27,6 +27,7 @@ namespace DroneStar.App
         ScrollView safetyPage;
         string cueStructureKey;
         Label cueStats;
+        Button fitButton;
         VisualElement safetyProgress;
         VisualElement safetyProgressFill;
         Label safetyProgressLabel;
@@ -141,8 +142,33 @@ namespace DroneStar.App
                 if (SelectedCue != null) kindField.SetValueWithoutNotify(DemoShows.KindLabel(SelectedCue.Formation.Kind));
             }));
             formation.Add(Ui.Field("Shape", kindField));
+            if (f.Kind == FormationKind.Model)
+            {
+                var names = new List<string>();
+                foreach (ModelShape shape in ShapeLibrary.Shapes) names.Add(shape.Name);
+                if (names.Count == 0)
+                {
+                    formation.Add(Ui.Text("The model library is not loaded, so this cue parks its drones.", "ds-hint ds-warn"));
+                }
+                else
+                {
+                    var modelField = new DropdownField(names, Mathf.Max(0, names.FindIndex(x => string.Equals(x, f.Model, StringComparison.OrdinalIgnoreCase))));
+                    modelField.RegisterValueChangedCallback(e => EditCue("Change model", c =>
+                    {
+                        // Cues still named after their model follow the new one.
+                        if (string.Equals(c.Name, c.Formation.Model, StringComparison.OrdinalIgnoreCase)) c.Name = e.newValue;
+                        c.Formation.Model = e.newValue;
+                    }));
+                    cueBindings.Add(new Binding(() =>
+                    {
+                        if (SelectedCue != null) modelField.SetValueWithoutNotify(SelectedCue.Formation.Model);
+                    }));
+                    formation.Add(Ui.Field("Model", modelField));
+                    formation.Add(Ui.Text("Full-colour 3D models from the Draw_in_3D show. Pair them with the Model colours light effect.", "ds-hint"));
+                }
+            }
 
-            if (f.Kind != FormationKind.Custom)
+            if (f.Kind != FormationKind.Custom && f.Kind != FormationKind.Model)
             {
                 formation.Add(Ui.Field("Style", Bind(new Segmented(new[] { "Filled", "Outline" }, () => (int)(SelectedCue?.Formation.Style ?? 0),
                     i => EditCue("Change style", c => c.Formation.Style = (FillStyle)i)))));
@@ -162,10 +188,10 @@ namespace DroneStar.App
                 formation.Add(Ui.Field("Text", text));
                 formation.Add(Ui.Text("Letters A-Z, digits and ! ? . - + * < >. Accents are folded (Hà → HA).", "ds-hint"));
             }
-            formation.Add(CueSlider("Size", 4f, 200f, 1f, c => c.Formation.Size, (c, v) => c.Formation.Size = v, Metres, "size"));
-            formation.Add(CueSlider("Altitude", 15f, 110f, 0.5f, c => c.Formation.Center.Y, (c, v) => c.Formation.Center = new System.Numerics.Vector3(c.Formation.Center.X, v, c.Formation.Center.Z), Metres, "alt"));
-            formation.Add(CueSlider("Left / right", -120f, 120f, 0.5f, c => c.Formation.Center.X, (c, v) => c.Formation.Center = new System.Numerics.Vector3(v, c.Formation.Center.Y, c.Formation.Center.Z), Metres, "x"));
-            formation.Add(CueSlider("Depth", -120f, 120f, 0.5f, c => c.Formation.Center.Z, (c, v) => c.Formation.Center = new System.Numerics.Vector3(c.Formation.Center.X, c.Formation.Center.Y, v), Metres, "z"));
+            formation.Add(CueSlider("Size", 4f, 300f, 1f, c => c.Formation.Size, (c, v) => c.Formation.Size = v, Metres, "size"));
+            formation.Add(CueSlider("Altitude", 15f, 260f, 0.5f, c => c.Formation.Center.Y, (c, v) => c.Formation.Center = new System.Numerics.Vector3(c.Formation.Center.X, v, c.Formation.Center.Z), Metres, "alt"));
+            formation.Add(CueSlider("Left / right", -200f, 200f, 0.5f, c => c.Formation.Center.X, (c, v) => c.Formation.Center = new System.Numerics.Vector3(v, c.Formation.Center.Y, c.Formation.Center.Z), Metres, "x"));
+            formation.Add(CueSlider("Depth", -200f, 200f, 0.5f, c => c.Formation.Center.Z, (c, v) => c.Formation.Center = new System.Numerics.Vector3(c.Formation.Center.X, c.Formation.Center.Y, v), Metres, "z"));
             formation.Add(CueSlider("Turn", -180f, 180f, 1f, c => c.Formation.YawDegrees, (c, v) => c.Formation.YawDegrees = v, Degrees, "yaw"));
             formation.Add(CueSlider("Tilt", -90f, 90f, 1f, c => c.Formation.PitchDegrees, (c, v) => c.Formation.PitchDegrees = v, Degrees, "pitch"));
             if (FormationGenerator.IsPlanar(f))
@@ -185,6 +211,9 @@ namespace DroneStar.App
             if (f.Kind == FormationKind.Custom) formation.Add(BuildSketchEditor());
             cueStats = Ui.Text("", "ds-stat-line");
             formation.Add(cueStats);
+            fitButton = Ui.Button("Enlarge to light all", null, app.FitSelectedToFleet, "ds-btn--small", "Grow this shape until every drone has a place in it");
+            fitButton.style.display = DisplayStyle.None;
+            formation.Add(fitButton);
             cuePage.Add(formation);
 
             // Timing -----------------------------------------------------------
@@ -210,7 +239,8 @@ namespace DroneStar.App
             // Light --------------------------------------------------------------
             LightSpec l = cue.Light;
             var light = Ui.Section("Light");
-            var effects = new List<string>(Enum.GetNames(typeof(LightEffect)));
+            var effects = new List<string>();
+            foreach (LightEffect e in Enum.GetValues(typeof(LightEffect))) effects.Add(EffectLabel(e));
             var effectField = new DropdownField(effects, (int)l.Effect);
             effectField.RegisterValueChangedCallback(e =>
             {
@@ -219,15 +249,20 @@ namespace DroneStar.App
             });
             cueBindings.Add(new Binding(() =>
             {
-                if (SelectedCue != null) effectField.SetValueWithoutNotify(SelectedCue.Light.Effect.ToString());
+                if (SelectedCue != null) effectField.SetValueWithoutNotify(EffectLabel(SelectedCue.Light.Effect));
             }));
             light.Add(Ui.Field("Effect", effectField));
             bool usesColors = l.Effect != LightEffect.Rainbow && l.Effect != LightEffect.Off;
             if (usesColors)
             {
-                light.Add(Bind(new SwatchPicker(l.Effect == LightEffect.Fire ? "Hot" : "Colour A", () => SelectedCue?.Light.ColorA ?? LedColor.White,
+                string first = l.Effect == LightEffect.Fire ? "Hot" : l.Effect == LightEffect.Artwork ? "Fill" : "Colour A";
+                light.Add(Bind(new SwatchPicker(first, () => SelectedCue?.Light.ColorA ?? LedColor.White,
                     col => EditCue("Change colour", c => c.Light.ColorA = col))));
-                if (l.Effect != LightEffect.Solid)
+                if (l.Effect == LightEffect.Artwork)
+                {
+                    light.Add(Ui.Text("3D models keep their own colours; the fill lights any other shape.", "ds-hint"));
+                }
+                else if (l.Effect != LightEffect.Solid)
                 {
                     light.Add(Bind(new SwatchPicker(l.Effect == LightEffect.Fire ? "Cool" : "Colour B", () => SelectedCue?.Light.ColorB ?? LedColor.White,
                         col => EditCue("Change colour", c => c.Light.ColorB = col))));
@@ -235,7 +270,7 @@ namespace DroneStar.App
             }
             if (l.Effect != LightEffect.Solid && l.Effect != LightEffect.Gradient && l.Effect != LightEffect.Off)
             {
-                light.Add(CueSlider("Tempo", 0f, ShowBounds.MaxEffectSpeed, 0.05f, c => c.Light.Speed, (c, v) => c.Light.Speed = v, v => v.ToString("0.00", Inv) + "×", "speed"));
+                light.Add(CueSlider(l.Effect == LightEffect.Artwork ? "Sparkle" : "Tempo", 0f, ShowBounds.MaxEffectSpeed, 0.05f, c => c.Light.Speed, (c, v) => c.Light.Speed = v, v => v.ToString("0.00", Inv) + "×", "speed"));
             }
             if (l.Effect == LightEffect.Gradient)
             {
@@ -272,8 +307,13 @@ namespace DroneStar.App
                 }
                 else
                 {
-                    motion.Add(CueSlider("Ripple", 0f, 6f, 0.1f, c => c.Motion.Amount, (c, v) => c.Motion.Amount = v, Metres, "amount"));
+                    motion.Add(CueSlider("Ripple", 0f, 12f, 0.1f, c => c.Motion.Amount, (c, v) => c.Motion.Amount = v, Metres, "amount"));
                 }
+            }
+            if (m.Kind == MotionKind.Rise)
+            {
+                motion.Add(CueSlider("Climb", 0f, ShowBounds.MaxMotionAmount, 0.5f, c => c.Motion.Amount, (c, v) => c.Motion.Amount = v, Metres, "amount"));
+                motion.Add(Ui.Text("The whole shape climbs this far during the hold, like a balloon or a rocket lifting off.", "ds-hint"));
             }
             motion.Add(Ui.Text("Motions ease in and out, and parked drones stay still.", "ds-hint"));
             cuePage.Add(motion);
@@ -357,6 +397,8 @@ namespace DroneStar.App
 
         static string Metres(float v) => v.ToString("0.#", Inv) + " m";
 
+        static string EffectLabel(LightEffect e) => e == LightEffect.Artwork ? "Model colours" : e.ToString();
+
         static string Degrees(float v) => v.ToString("0", Inv) + "°";
 
         void RefreshCueStats()
@@ -366,17 +408,20 @@ namespace DroneStar.App
             if (app.Show == null || app.ShowIsStale || i < 0 || i >= app.Show.CueTimings.Count)
             {
                 cueStats.text = "Re-planning...";
+                if (fitButton != null) fitButton.style.display = DisplayStyle.None;
                 return;
             }
             CueTiming t = app.Show.CueTimings[i];
             FormationResult f = t.Formation;
             string spacing = float.IsPositiveInfinity(f.MinSpacing) ? "-" : f.MinSpacing.ToString("0.00", Inv) + " m";
             string text = string.Format(Inv, "Lit {0}/{1} · spacing {2} · longest move {3:0} m", f.LitCount, app.Show.DroneCount, spacing, t.LongestMove);
-            float motionSpeed = HoldMotion.PeakSpeed(app.Show.Document.Cues[i].Motion, f);
+            Cue source = app.Show.Document.Cues[i];
+            float motionSpeed = HoldMotion.PeakSpeed(source.Motion, f, source.HoldSeconds);
             if (motionSpeed > 0.05f) text += string.Format(Inv, " · motion ≈ {0:0.0} m/s", motionSpeed);
             if (f.DarkCount > 0) text += "\n" + f.DarkCount + " drones park dark behind the shape, enlarge it or add layers to light them.";
             cueStats.text = text;
             cueStats.EnableInClassList("ds-warn", f.DarkCount > 0 || motionSpeed > app.Show.Document.Limits.MaxSpeed);
+            if (fitButton != null) fitButton.style.display = f.DarkCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         // ------------------------------------------------------------------ show page
@@ -394,10 +439,18 @@ namespace DroneStar.App
                 if (author.focusController?.focusedElement != author) author.SetValueWithoutNotify(app.Session.Document.Author);
             }));
             show.Add(Ui.Field("Author", author));
-            show.Add(DocSlider("Drones", 10f, ShowBounds.MaxDrones, 10f, d => d.DroneCount, (d, v) => d.DroneCount = Mathf.RoundToInt(v), v => v.ToString("0", Inv), "drones"));
+            var fleetLabels = new List<string>();
+            foreach (int size in ShowBounds.FleetSizes) fleetLabels.Add(size >= 1024 ? (size / 1024) + "K" : size.ToString(Inv));
+            var fleet = new Segmented(fleetLabels, () => Array.IndexOf(ShowBounds.FleetSizes, app.Session.Document.DroneCount),
+                i => app.SetFleetSize(ShowBounds.FleetSizes[i]));
+            showBindings.Add(fleet);
+            show.Add(Ui.Field("Fleet", fleet));
+            show.Add(DocSlider("Drones", 10f, ShowBounds.MaxDrones, 1f, d => d.DroneCount, (d, v) => d.DroneCount = Mathf.RoundToInt(v), v => v.ToString("0", Inv), "drones"));
             show.Add(DocSlider("Pre-show", 0f, 30f, 0.5f, d => d.PreShowSeconds, (d, v) => d.PreShowSeconds = v, Ui.Seconds, "pre"));
             show.Add(DocSlider("Post-show", 0f, 30f, 0.5f, d => d.PostShowSeconds, (d, v) => d.PostShowSeconds = v, Ui.Seconds, "post"));
-            show.Add(Ui.Text("Large swarms take longer to plan: every transition solves an optimal drone-to-slot assignment.", "ds-hint"));
+            show.Add(Ui.Text("Fleet presets resize every shape, altitude and limit to suit the fleet; the slider changes only the count. " +
+                             "Every transition solves an optimal drone-to-slot assignment, so thousands of drones take a few seconds to plan " +
+                             "(the built-in show is pre-planned at 1K, 2K and 4K).", "ds-hint"));
             showPage.Add(show);
 
             var limits = Ui.Section("Safety limits");

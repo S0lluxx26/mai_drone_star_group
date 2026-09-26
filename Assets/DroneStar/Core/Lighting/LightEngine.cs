@@ -22,6 +22,16 @@ namespace DroneStar.Core
             {
                 case LightEffect.Off:
                     return LedColor.Black;
+                case LightEffect.Artwork:
+                {
+                    LedColor art = slot.Art.MaxComponent > 0f ? slot.Art : a;
+                    // A gentle per-drone shimmer keeps the picture alive; Speed 0 holds it perfectly still.
+                    float phase = ShowMath.Hash01(drone, 5);
+                    float wave = MathF.Sin(ShowMath.TwoPi * (t * 0.35f * speed + phase));
+                    float glint = wave > 0f ? MathF.Pow(wave, 12f) : 0f;
+                    c = LedColor.Lerp(art * (1f - 0.12f * Math.Min(speed, 1f)), LedColor.White, 0.35f * glint * Math.Min(speed, 1f));
+                    break;
+                }
                 case LightEffect.Solid:
                     c = a;
                     break;
