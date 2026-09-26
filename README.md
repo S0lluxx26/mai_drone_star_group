@@ -5,9 +5,9 @@
 [**▶ Watch the demo run in your browser**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=1) ·
 [Open the studio](https://s0lluxx26.github.io/mai_drone_star_group/)
 
-![The Eiffel Tower drawn by 2,048 drones in A Night of Stars, the flagship demo](docs/media/hero.png)
+!["MAI" written by 8,192 drones in A Night of Stars, the flagship demo](docs/media/hero.png)
 
-Drone Star Studio is a complete show editor for fleets of up to **4,096 drones**: lay out formations or
+Drone Star Studio is a complete show editor for fleets of up to **8,192 drones**: lay out formations or
 full-colour 3D models, colour them, give them motion, and the studio plans every flight path, checks the
 whole show for safety, and plays it back over a dark blue night lake with reflections, light trails, a 3D
 city skyline and a generated soundtrack. Every drone is a detailed quadcopter with a glowing LED bulb
@@ -24,8 +24,11 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
 
 ## What you can do
 
-- **Fleets from 10 to 4,096 drones** — presets (256 · 512 · 1K · 2K · 4K) resize every shape, altitude
-  and limit to suit the fleet, or set any count with the slider.
+- **Fleets from 10 to 8,192 drones** — presets (256 · 512 · 1K · 2K · 4K · 8K) resize every shape, altitude,
+  spin and limit to suit the fleet, or set any count with the slider. Drones must keep a safe distance, so
+  a shape of a given size holds a fixed number of them: a bigger fleet draws bigger shapes in finer detail,
+  and the cameras frame them accordingly. Phones open the flagship at 2,048 drones (the same show, a
+  quarter of the per-frame work); 8K is one tap away in the Show tab.
 - **12 full-colour 3D models** — robot, fish, butterfly, hot-air balloon, Eiffel Tower, ocean liner,
   whale, firework star, row of fire, birthday cake, starship launch and a greeting banner, ported from
   the [Draw_in_3D](https://github.com/S0lluxx26/Draw_in_3D) drone show. Each keeps its own colours (the *Model
@@ -61,10 +64,11 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
 2. **Optimal assignment.** Between two formations, drones are matched to their new slots minimising the
    total *squared* distance: exactly with the Hungarian algorithm up to 600 drones, and above that with
    Bertsekas' ε-scaling auction followed by a pairwise-swap repair, which leaves no pair of drones that
-   would be better off swapping slots (about 1.5 s for 4,096 drones, spread over frames so the editor
-   stays smooth). Layouts and assignments are cached, so editing one cue only re-lays that cue and
-   re-solves the two transitions that touch it, and the built-in show ships pre-solved at 1K, 2K and 4K
-   drones (each baked entry records its cost, so a stale one is re-solved rather than trusted).
+   would be better off swapping slots (about 2 s for 8,192 drones, within 0.1 % of the optimum, spread over
+   frames so the editor stays smooth). Layouts and assignments are cached, so editing one cue only re-lays
+   that cue and re-solves the two transitions that touch it, and the built-in show ships pre-solved at 1K,
+   2K, 4K and 8K drones (each baked entry records its cost, so a stale one is re-solved rather than
+   trusted).
 3. **Synchronised straight lines.** All drones leave and arrive together along straight lines with a
    minimum-jerk profile (zero velocity and acceleration at both ends). Swap-optimal assignment +
    synchronised straight lines + √2 spacing is the CAPT condition (Turpin, Michael & Kumar, 2014) that
@@ -76,10 +80,10 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
    compiled show at 20 Hz (10 Hz on the web and above 1,000 drones) and tests the closest approach of every nearby pair
    between samples.
 
-The flagship demo, *A Night of Stars* (2,048 drones, 16 scenes, 5 min 51 s), passes with a closest pass
-of 1.28 m against a 1.2 m limit, a top speed of 11.1 m/s against 12 m/s and peak acceleration of
-4.8 m/s² against 5 m/s²; its 4,096-drone preset (7 min 10 s) passes with a closest pass of 1.23 m. The
-original 360-drone show is still there as the *Classic Night* template.
+The flagship demo, *A Night of Stars* (8,192 drones, 16 scenes, 9 min 9 s), passes with a closest pass
+of 1.27 m against a 1.2 m limit, a top speed of 11.1 m/s against 12 m/s and peak acceleration of
+4.8 m/s² against 5 m/s²; every smaller preset passes too (2,048 drones: 5 min 53 s, closest pass 1.28 m).
+The original 360-drone show is still there as the *Classic Night* template.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and [docs/REVIEW.md](docs/REVIEW.md) for
 the review log.
 
@@ -129,10 +133,10 @@ Requires **Unity 6000.6.3f1** (Unity 6.6) with Web and Windows build support, an
 for the fast core tests.
 
 ```bash
-# Core algorithms (a few minutes, no Unity needed)
+# Core algorithms (under a minute, no Unity needed)
 dotnet test tests/DroneStar.Core.Tests
 
-# After changing the flagship, the formations or FormationGenerator.Revision: re-bake its transitions
+# After changing the flagship, the formations or FormationGenerator.Revision: re-bake its transitions (~2 min)
 dotnet test tests/DroneStar.Core.Tests --filter Name=BakeDemoAssignments
 
 # Re-export the 3D models from a Draw_in_3D checkout next to this repository

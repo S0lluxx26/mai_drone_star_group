@@ -209,6 +209,9 @@ namespace DroneStar.App
                     fov = 48f;
                     break;
             }
+            // Shots placed near the shore or the water keep big shapes (big fleets) whole with a wider lens.
+            float reach = Mathf.Max((target - position).magnitude, 1f);
+            fov = Mathf.Clamp(Mathf.Max(fov, 2f * Mathf.Atan(r * 0.85f / reach) * Mathf.Rad2Deg * 1.1f), 30f, 80f);
         }
 
         /// <summary>Bounds of the launch grid, for the launch shot.</summary>

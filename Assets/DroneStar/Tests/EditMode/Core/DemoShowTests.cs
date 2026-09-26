@@ -9,11 +9,14 @@ namespace DroneStar.Tests
         [Test]
         public void EveryTemplateIsSafeToFly()
         {
+            ShowCompiler compiler = TestData.BakedCompiler();
             foreach (DemoShows.Template template in DemoShows.Templates)
             {
+                // The flagship is checked at every fleet size by BakedDemoTests.EveryPresolvedFleetLightsEveryDroneAndFliesSafely.
+                if (template.Create.Method.Name == nameof(DemoShows.StarGroupNight)) continue;
                 ShowDocument doc = template.Create();
-                CompiledShow show = new ShowCompiler().Compile(doc);
-                ValidationReport report = SafetyValidator.Run(show);
+                CompiledShow show = compiler.Compile(doc);
+                ValidationReport report = SafetyValidator.Run(show, TestData.ValidationStep(doc.DroneCount));
                 string findings = string.Join("\n", report.Issues.ConvertAll(i => i.Severity + ": " + i.Message));
                 Assert.That(report.ErrorCount, Is.EqualTo(0), template.Name + "\n" + findings);
                 Assert.That(report.WarningCount, Is.EqualTo(0), template.Name + "\n" + findings);
@@ -27,13 +30,16 @@ namespace DroneStar.Tests
         [Test]
         public void FlagshipDemoLightsEveryDroneInEveryScene()
         {
-            CompiledShow show = new ShowCompiler().Compile(DemoShows.StarGroupNight());
+            ShowCompiler compiler = TestData.BakedCompiler();
+            CompiledShow show = compiler.Compile(DemoShows.StarGroupNight());
             foreach (CueTiming t in show.CueTimings)
             {
                 Assert.That(t.Formation.LitCount, Is.EqualTo(show.DroneCount), show.Document.Cues[t.CueIndex].Name);
             }
-            Assert.That(show.DroneCount, Is.EqualTo(2048));
-            Assert.That(show.Duration, Is.InRange(200f, 600f));
+            Assert.That(show.DroneCount, Is.EqualTo(DemoShows.FlagshipDrones));
+            Assert.That(show.DroneCount, Is.EqualTo(8192), "four times the original 2,048-drone flagship");
+            Assert.That(show.Duration, Is.InRange(200f, 900f));
+            Assert.That(compiler.CacheMisses, Is.EqualTo(0), "the flagship ships fully pre-solved");
         }
 
         [Test]

@@ -48,16 +48,17 @@ namespace DroneStar.Tests
         [UnityTest]
         public IEnumerator FlagshipCompilesFromTheBakedCacheAndRendersEveryDrone()
         {
-            Assert.That(app.Show.DroneCount, Is.EqualTo(2048));
+            int n = DemoShows.FlagshipDrones;
+            Assert.That(app.Show.DroneCount, Is.EqualTo(n));
             Assert.That(app.CompileError, Is.Null);
             yield return null;
-            Assert.That(app.Swarm.DroneCount, Is.EqualTo(2048));
+            Assert.That(app.Swarm.DroneCount, Is.EqualTo(n));
             var glow = app.Swarm.transform.Find("LED Glow").GetComponent<MeshFilter>().sharedMesh;
-            Assert.That(glow.vertexCount, Is.EqualTo(2048 * 4));
+            Assert.That(glow.vertexCount, Is.EqualTo(n * 4));
             // Model scenes need the shape library that the scene ships with.
             for (int i = 0; i < app.Show.CueTimings.Count; i++)
             {
-                Assert.That(app.Show.CueTimings[i].Formation.LitCount, Is.EqualTo(2048), app.Show.Document.Cues[i].Name);
+                Assert.That(app.Show.CueTimings[i].Formation.LitCount, Is.EqualTo(n), app.Show.Document.Cues[i].Name);
             }
         }
 
@@ -79,7 +80,7 @@ namespace DroneStar.Tests
             app.CameraRig.SetMode(CameraMode.Orbit);
             app.FrameCloseUp();
             Assert.That(app.CameraRig.IsFollowing, Is.True);
-            Assert.That(app.FollowedDrone, Is.InRange(0, 2047));
+            Assert.That(app.FollowedDrone, Is.InRange(0, DemoShows.FlagshipDrones - 1));
             app.Clock.Play(app.Show.Duration);
             yield return new WaitForSecondsRealtime(1.5f);
             float distance = Vector3.Distance(app.CameraRig.transform.position, LastPosition(app.FollowedDrone));

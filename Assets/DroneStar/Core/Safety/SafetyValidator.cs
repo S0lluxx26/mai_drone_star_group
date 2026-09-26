@@ -114,6 +114,14 @@ namespace DroneStar.Core
         Vector3[] cur;
         int nextSample;
 
+        // The sample in progress. Its separation pairs are checked a chunk of drones at a time, so thousands of
+        // drones in a crowded transit never stall a frame on a single sample.
+        const int PairChunk = 1024;
+        int pairCursor = -1;
+        Vector3[] pairStart;
+        float sampleTime;
+        int sampleCue;
+
         public SafetyValidator(CompiledShow show, float step = DefaultStep)
         {
             this.show = show ?? throw new ArgumentNullException(nameof(show));
@@ -141,22 +149,40 @@ namespace DroneStar.Core
             return v.Report;
         }
 
-        /// <summary>Checks up to <paramref name="maxSamples"/> more samples. Returns true when finished.</summary>
-        public bool Step(int maxSamples)
+        /// <summary>
+        /// Does up to <paramref name="maxUnits"/> units of work: starting a sample (positions and per-drone checks)
+        /// or checking the separation pairs of up to 1,024 drones. Returns true when finished.
+        /// </summary>
+        public bool Step(int maxUnits)
         {
             if (IsDone) return true;
-            for (int budget = 0; budget < maxSamples && nextSample < sampleCount; budget++)
+            for (int budget = 0; budget < maxUnits; budget++)
             {
-                int k = nextSample++;
-                float t = Math.Min(k * dt, show.Duration);
-                Vector3[] recycled = prev2;
-                prev2 = prev;
-                prev = cur;
-                cur = recycled;
-                show.SamplePositions(t, cur);
-                CheckSample(k, t);
+                if (pairCursor < 0)
+                {
+                    if (nextSample >= sampleCount) break;
+                    int k = nextSample++;
+                    float t = Math.Min(k * dt, show.Duration);
+                    Vector3[] recycled = prev2;
+                    prev2 = prev;
+                    prev = cur;
+                    cur = recycled;
+                    show.SamplePositions(t, cur);
+                    BeginSample(k, t);
+                }
+                else
+                {
+                    int end = Math.Min(n, pairCursor + PairChunk);
+                    CheckPairs(pairCursor, end);
+                    pairCursor = end;
+                    if (pairCursor >= n)
+                    {
+                        CloseIntervalsNotHit();
+                        pairCursor = -1;
+                    }
+                }
             }
-            if (nextSample >= sampleCount)
+            if (pairCursor < 0 && nextSample >= sampleCount)
             {
                 Finish();
                 IsDone = true;
@@ -164,7 +190,7 @@ namespace DroneStar.Core
             return IsDone;
         }
 
-        void CheckSample(int k, float t)
+        void BeginSample(int k, float t)
         {
             Report.Samples++;
             hitThisSample.Clear();
@@ -221,11 +247,10 @@ namespace DroneStar.Core
                 }
             }
 
-            CheckSeparation(k, t, cue);
-            CloseIntervalsNotHit();
+            BeginSeparation(k, t, cue);
         }
 
-        void CheckSeparation(int k, float t, int cue)
+        void BeginSeparation(int k, float t, int cue)
         {
             // Pairs are tested over the interval [previous sample, this sample] with linear motion, so a
             // fast crossing between samples is still caught.
@@ -239,8 +264,18 @@ namespace DroneStar.Core
             float searchRadius = Math.Max(reach, limits.FormationSpacing * 1.25f);
             Report.SeparationSearchRadius = Math.Min(Report.SeparationSearchRadius, searchRadius);
             grid.Build(a0, n, searchRadius);
+            pairStart = a0;
+            sampleTime = t;
+            sampleCue = cue;
+            pairCursor = 0;
+        }
 
-            for (int i = 0; i < n; i++)
+        void CheckPairs(int first, int end)
+        {
+            Vector3[] a0 = pairStart;
+            float t = sampleTime;
+            int cue = sampleCue;
+            for (int i = first; i < end; i++)
             {
                 grid.CellOf(a0[i], out int cx, out int cy, out int cz);
                 for (int dx = -1; dx <= 1; dx++)

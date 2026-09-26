@@ -9,6 +9,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>DroneStar.Core</AssemblyName>
     <RootNamespace>DroneStar.Core</RootNamespace>
+    <!-- Optimised in every configuration: players run optimised code, and the suite flies 8,192-drone shows. -->
+    <Optimize>true</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Assets/DroneStar/Core/**/*.cs" />

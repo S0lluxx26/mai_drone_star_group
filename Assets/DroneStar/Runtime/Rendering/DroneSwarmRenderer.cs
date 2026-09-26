@@ -10,8 +10,13 @@ namespace DroneStar.App
     /// </summary>
     public sealed class DroneSwarmRenderer : MonoBehaviour
     {
-        const int TrailLength = 14;
-        const float TrailInterval = 1f / 18f;
+        /// <summary>Seconds of flight a light trail shows.</summary>
+        const float TrailSeconds = 13f / 18f;
+
+        // Samples per trail: 14 up to 2,048 drones, fewer for bigger fleets (seen from further away, where a
+        // coarser trail looks the same) so the per-frame trail upload stays about the same size.
+        int trailLength = 14;
+        float trailInterval = TrailSeconds / 13f;
         const int BodyBatch = 250;
 
         [SerializeField] Material glowMaterial;
@@ -91,23 +96,25 @@ namespace DroneStar.App
         {
             count = n;
             glow.Resize(n);
-            trailHistory = new Vector3[n * TrailLength];
-            trailVertices = new Vector3[n * TrailLength];
-            trailColors = new Color[n * TrailLength];
+            trailLength = n <= 2048 ? 14 : n <= 4096 ? 10 : 7;
+            trailInterval = TrailSeconds / (trailLength - 1);
+            trailHistory = new Vector3[n * trailLength];
+            trailVertices = new Vector3[n * trailLength];
+            trailColors = new Color[n * trailLength];
             lastTrailTime = float.NaN;
 
-            var indices = new int[n * (TrailLength - 1) * 2];
+            var indices = new int[n * (trailLength - 1) * 2];
             int k = 0;
             for (int i = 0; i < n; i++)
             {
-                for (int j = 0; j + 1 < TrailLength; j++)
+                for (int j = 0; j + 1 < trailLength; j++)
                 {
-                    indices[k++] = i * TrailLength + j;
-                    indices[k++] = i * TrailLength + j + 1;
+                    indices[k++] = i * trailLength + j;
+                    indices[k++] = i * trailLength + j + 1;
                 }
             }
             trailMesh.Clear();
-            trailMesh.indexFormat = n * TrailLength > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            trailMesh.indexFormat = n * trailLength > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
             trailMesh.SetVertices(trailVertices);
             trailMesh.SetColors(trailColors);
             trailMesh.SetIndices(indices, MeshTopology.Lines, 0, false);
@@ -124,34 +131,34 @@ namespace DroneStar.App
             {
                 for (int i = 0; i < n; i++)
                 {
-                    for (int j = 0; j < TrailLength; j++) trailHistory[i * TrailLength + j] = positions[i];
+                    for (int j = 0; j < trailLength; j++) trailHistory[i * trailLength + j] = positions[i];
                 }
                 trailHead = 0;
                 lastTrailTime = showTime;
             }
-            else if (showTime - lastTrailTime >= TrailInterval)
+            else if (showTime - lastTrailTime >= trailInterval)
             {
-                trailHead = (trailHead + 1) % TrailLength;
-                for (int i = 0; i < n; i++) trailHistory[i * TrailLength + trailHead] = positions[i];
+                trailHead = (trailHead + 1) % trailLength;
+                for (int i = 0; i < n; i++) trailHistory[i * trailLength + trailHead] = positions[i];
                 lastTrailTime = showTime;
             }
 
             for (int i = 0; i < n; i++)
             {
-                int baseIndex = i * TrailLength;
+                int baseIndex = i * trailLength;
                 Color c = colors[i];
-                for (int j = 0; j < TrailLength; j++)
+                for (int j = 0; j < trailLength; j++)
                 {
                     // j = 0 is the live position; older samples fade out quadratically.
-                    Vector3 p = j == 0 ? positions[i] : trailHistory[baseIndex + (trailHead - j + 1 + TrailLength) % TrailLength];
-                    float fade = 1f - (float)j / (TrailLength - 1);
+                    Vector3 p = j == 0 ? positions[i] : trailHistory[baseIndex + (trailHead - j + 1 + trailLength) % trailLength];
+                    float fade = 1f - (float)j / (trailLength - 1);
                     trailVertices[baseIndex + j] = p;
                     trailColors[baseIndex + j] = new Color(c.r, c.g, c.b, fade * fade * 0.6f);
                 }
             }
             const MeshUpdateFlags flags = MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices;
-            trailMesh.SetVertices(trailVertices, 0, n * TrailLength, flags);
-            trailMesh.SetColors(trailColors, 0, n * TrailLength, flags);
+            trailMesh.SetVertices(trailVertices, 0, n * trailLength, flags);
+            trailMesh.SetColors(trailColors, 0, n * trailLength, flags);
         }
 
         // ------------------------------------------------------------------ airframes

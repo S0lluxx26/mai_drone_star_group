@@ -28,7 +28,7 @@ namespace DroneStar.Core
     {
         /// <summary>Most points a model may carry. Models hold more points than the largest fleet, because the
         /// spacing filter always drops some; this cap only guards against corrupt packs.</summary>
-        public const int MaxPointsPerModel = 16384;
+        public const int MaxPointsPerModel = 65535;
 
         static readonly List<ModelShape> shapes = new List<ModelShape>();
         static readonly object gate = new object();

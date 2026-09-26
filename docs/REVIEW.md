@@ -80,3 +80,24 @@ probe before it was fixed. Regression tests are in `LargeFleetTests.cs`, `BakedD
 | 5 | The followed drone's index survived fleet changes and template loads. | The close-up ends when the show is replaced or its fleet size changes. |
 | 6 | Leaving a close-up (another camera mode, a demo run) left the orbit a few metres from empty sky. | The orbit that the close-up interrupted is restored. |
 | 7 | Two test assertions could not fail. | The airframe test checks triangle winding against geometry; the tautology is gone. |
+
+## Round 3 — 2026-09-26: four times the drones
+
+*Why do some shapes look like they have fewer drones than expected?* Safety spacing (√2 × the separation)
+fixes how many drones a shape of a given size can hold, and the flagship flew 2,048 where the Draw_in_3D
+show flies 4,096 in every shape. The flagship now flies 8,192 (4×, about the size of today's record-setting
+shows), designed at 2,048 and grown by the fleet scaler, so its shapes are twice as wide and drawn in twice
+the detail. Beyond the drone count itself:
+
+| Area | Change |
+|---|---|
+| Limits | Fleets up to 8,192; an 8K preset. |
+| Models | 24,576 points per model (two rounds of midpoints) so greedy spacing lights 8,192 drones; the exporter pins the 12 curated models so new Draw_in_3D shapes do not silently change the pack. |
+| Galaxy | Arms are lines, whose capacity grows with size rather than area: filled galaxies add lanes (up to 9 per arm) when the fleet outgrows three. |
+| Solver | The auction stops at ε = 10⁻³ (the swap repair supplies the safety condition): 2–2.5× faster, total travel within 0.1 %. The core builds optimised, so the bake takes 1.5 min instead of 15. |
+| Models, sizing | A model too small for the fleet reached the end of its point pool 400 points at a time and was then re-tried five times (7 min to size twelve new cues). The pool now grows geometrically and the useless top-up is skipped (4 s); layouts are unchanged. |
+| Cameras | The shore, aerial and default orbit views frame the show's actual envelope; demo shots near the water widen their lens when a shape would not fit. |
+| Rendering | Light trails use fewer samples for big fleets (same time span), keeping the per-frame upload about constant. |
+| Safety check | At 8,192 drones one time sample costs ~4.5 ms on average but up to ~90 ms in crowded transits, which stalled frames (14–17 fps in the browser while the check ran). A sample's pair checks now run 1,024 drones per step inside the 5 ms budget: 55–60 fps in the browser while checking. |
+| Phones | Measured in Chrome with the CPU throttled 4×: ~15 fps at 8,192 drones (sampling, colouring and uploading every drone each frame). Phones open the flagship at its pre-solved 2,048-drone preset; desktop browsers fly 8,192 at 55–60 fps. |
+| Tests | Flagship tests compile with the shipped baked plans; every preset (1K to 8K) is compiled and safety-checked; runtime-determinism digests cover all 64 preset layouts. |

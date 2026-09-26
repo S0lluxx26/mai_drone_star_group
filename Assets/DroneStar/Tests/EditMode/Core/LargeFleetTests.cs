@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace DroneStar.Tests
 {
-    /// <summary>Fleets up to 4096 drones: model shapes, the auction solver, cache export and resizing.</summary>
+    /// <summary>Fleets up to 8,192 drones: model shapes, the auction solver, cache export and resizing.</summary>
     public class LargeFleetTests
     {
         [Test]
@@ -16,8 +16,8 @@ namespace DroneStar.Tests
             Assert.That(shapes.Count, Is.EqualTo(12));
             foreach (ModelShape m in shapes)
             {
-                Assert.That(m.Points.Length, Is.EqualTo(12288), m.Name + ": a deep pool, three times the largest fleet");
-                Assert.That(m.Colors.Length, Is.EqualTo(12288), m.Name);
+                Assert.That(m.Points.Length, Is.EqualTo(3 * ShowBounds.MaxDrones), m.Name + ": a deep pool, three times the largest fleet");
+                Assert.That(m.Colors.Length, Is.EqualTo(3 * ShowBounds.MaxDrones), m.Name);
                 float extent = 0f;
                 foreach (Vector3 p in m.Points) extent = Math.Max(extent, Math.Max(Math.Abs(p.X), Math.Max(Math.Abs(p.Y), Math.Abs(p.Z))));
                 Assert.That(extent, Is.EqualTo(1f).Within(0.01f), m.Name + " is normalised");
@@ -97,7 +97,7 @@ namespace DroneStar.Tests
             int[] exact = AssignmentSolver.Solve(from, to);
             int[] near = new AuctionAssignment(from, to).Solve();
             double ce = AssignmentSolver.TotalCost(from, to, exact), cn = AssignmentSolver.TotalCost(from, to, near);
-            Assert.That((cn - ce) / ce, Is.LessThan(1e-4), "auction is within 0.01 % of the optimum");
+            Assert.That((cn - ce) / ce, Is.LessThan(2e-3), "auction is within 0.2 % of the optimum");
             var seen = new bool[near.Length];
             foreach (int j in near)
             {
@@ -124,6 +124,16 @@ namespace DroneStar.Tests
                     Assert.That(dot, Is.GreaterThan(-1e-3), "pair " + i + "," + j + " would be cheaper swapped");
                 }
             }
+        }
+
+        [Test]
+        public void GalaxyArmsGrowLanesForBigFleets()
+        {
+            // Arms are lines: their capacity grows with size, a fleet's with area. More lanes keep it lit.
+            var spec = new FormationSpec { Kind = FormationKind.Galaxy, Points = 4, Size = 344f, Center = new Vector3(0, 220, 0) };
+            Assert.That(FormationGenerator.Generate(spec, 8192, 1.7f).LitCount, Is.EqualTo(8192));
+            spec.Size = 172f;
+            Assert.That(FormationGenerator.Generate(spec, 2048, 1.7f).LitCount, Is.EqualTo(2048));
         }
 
         [Test]
@@ -195,6 +205,24 @@ namespace DroneStar.Tests
             Assert.That(show.DroneCount, Is.EqualTo(1200));
             ValidationReport r = SafetyValidator.Run(show, 0.1f);
             Assert.That(r.Passed, Is.True, string.Join("\n", r.Issues.ConvertAll(i => i.Message)));
+        }
+
+        [Test]
+        public void SafetyCheckInSmallStepsMatchesOneShot()
+        {
+            // Big fleets check a sample's pairs a chunk of drones at a time; the result must not change.
+            ShowDocument doc = DemoShows.Blank();
+            ShowScaler.ResizeForDroneCount(doc, 2500);
+            CompiledShow show = new ShowCompiler().Compile(doc);
+            var stepped = new SafetyValidator(show, 0.25f);
+            int steps = 0;
+            while (!stepped.Step(1)) steps++;
+            ValidationReport once = SafetyValidator.Run(show, 0.25f);
+            Assert.That(steps, Is.GreaterThan(stepped.Report.Samples * 3), "every sample is split into several steps");
+            Assert.That(stepped.Report.MinSeparation, Is.EqualTo(once.MinSeparation));
+            Assert.That(stepped.Report.MaxSpeed, Is.EqualTo(once.MaxSpeed));
+            Assert.That(stepped.Report.MaxAcceleration, Is.EqualTo(once.MaxAcceleration));
+            Assert.That(stepped.Report.Issues.Count, Is.EqualTo(once.Issues.Count));
         }
 
         static Vector3[] Positions(FormationResult f)

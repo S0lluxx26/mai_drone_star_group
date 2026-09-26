@@ -156,11 +156,11 @@ namespace DroneStar.Tests
         public void CompilingDoesNotMutateTheSource()
         {
             ShowDocument doc = SmallShow();
-            doc.DroneCount = 5000;
+            doc.DroneCount = -5;
             string before = ShowSerializer.ToJson(doc);
             CompiledShow show = new ShowCompiler().Compile(doc);
-            Assert.That(ShowSerializer.ToJson(doc), Is.EqualTo(before));
-            Assert.That(show.DroneCount, Is.EqualTo(ShowBounds.MaxDrones));
+            Assert.That(ShowSerializer.ToJson(doc), Is.EqualTo(before), "the compiler sanitises its own copy");
+            Assert.That(show.DroneCount, Is.EqualTo(ShowBounds.MinDrones));
         }
 
         [Test]

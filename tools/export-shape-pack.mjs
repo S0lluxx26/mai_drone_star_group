@@ -4,8 +4,9 @@
 //
 // A 4096-drone show cannot light every drone from exactly 4096 points (the spacing filter always drops a
 // few), so each model is densified: midpoints between near neighbours (never across gaps between separate
-// parts) are added, and the union is re-ordered by farthest-point sampling and cut to POINTS (three times the
-// largest fleet: greedy spacing packs well only while it uses a small part of the pool), keeping the
+// parts) are added, in rounds until the pool is deep enough, and the union is re-ordered by farthest-point
+// sampling and cut to POINTS (three times the largest fleet: greedy spacing packs well only while it uses a
+// small part of the pool), keeping the
 // "every prefix is evenly spread" property.
 //
 // usage: node tools/export-shape-pack.mjs [path/to/Draw_in_3D]
@@ -25,7 +26,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const source = resolve(process.argv[2] || join(here, "..", "..", "Draw_in_3D"));
 const assets = (await import(pathToFileURL(join(source, "web", "src", "formation-assets.js")).href)).default;
 
-const POINTS = 12288;
+const POINTS = +(process.env.POINTS || 24576);
+
+// The curated models, in picker order. Listed explicitly so shapes added to Draw_in_3D later do not change the
+// pack (and with it every baked assignment) until they are chosen here.
+const MODELS = ["Robot", "Fish", "Butterfly", "Hot air balloon", "Eiffel Tower", "Big ship", "Whale", "Firework star",
+  "Row of fire", "Birthday cake", "Starship launch", "Happy day"];
 
 // Shapes whose flames are part of the picture by default in the Draw_in_3D demo.
 const withFire = new Set(["Row of fire", "Starship launch"]);
@@ -44,61 +50,84 @@ function merged(name, f) {
   return out.slice(0, 4096);
 }
 
-function densify(points) {
-  const n = points.length, K = 8;
-  const P = points.map((q) => q.p);
-  const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
-  const neighbours = [];
-  const nearest = new Float64Array(n);
+// k nearest neighbours by brute force over typed arrays (n is at most a few tens of thousands).
+function nearestNeighbours(X, n, K) {
+  const idx = new Int32Array(n * K).fill(-1), dist = new Float64Array(n * K).fill(Infinity);
   for (let i = 0; i < n; i++) {
-    const best = [];
+    const xi = X[3 * i], yi = X[3 * i + 1], zi = X[3 * i + 2], o = i * K;
     for (let j = 0; j < n; j++) {
       if (j === i) continue;
-      const d = d2(P[i], P[j]);
-      if (best.length < K || d < best[best.length - 1][0]) {
-        best.push([d, j]);
-        best.sort((x, y) => x[0] - y[0]);
-        if (best.length > K) best.pop();
-      }
+      const dx = X[3 * j] - xi, dy = X[3 * j + 1] - yi, dz = X[3 * j + 2] - zi;
+      const d = dx * dx + dy * dy + dz * dz;
+      if (d >= dist[o + K - 1]) continue;
+      let k = K - 1;
+      while (k > 0 && dist[o + k - 1] > d) { dist[o + k] = dist[o + k - 1]; idx[o + k] = idx[o + k - 1]; k--; }
+      dist[o + k] = d; idx[o + k] = j;
     }
-    neighbours.push(best);
-    nearest[i] = Math.sqrt(best[0][0]);
   }
-  const typical = Float64Array.from(nearest).sort()[n >> 1];
-  const limit = (2.2 * typical) ** 2;
-  const union = points.slice();
-  const seen = new Set();
+  return { idx, dist };
+}
+
+// One round: add the midpoint of every near pair (never across gaps between separate parts).
+function densifyRound(set) {
+  const { X, C, n } = set, K = 8;
+  const { idx, dist } = nearestNeighbours(X, n, K);
+  const nearest = new Float64Array(n);
+  for (let i = 0; i < n; i++) nearest[i] = dist[i * K];
+  const limit = 2.2 * 2.2 * nearest.slice().sort()[n >> 1];
+  const seen = new Set(), mids = [];
   for (let i = 0; i < n; i++) {
-    for (const [d, j] of neighbours[i]) {
+    for (let k = 0; k < K; k++) {
+      const j = idx[i * K + k];
+      if (j < 0 || dist[i * K + k] > limit) continue;
       const key = Math.min(i, j) * n + Math.max(i, j);
-      if (d > limit || seen.has(key)) continue;
+      if (seen.has(key)) continue;
       seen.add(key);
-      const a = points[i], b = points[j];
-      union.push({ p: [0, 1, 2].map((k) => (a.p[k] + b.p[k]) / 2), c: [0, 1, 2].map((k) => (a.c[k] + b.c[k]) / 2) });
+      mids.push(i, j);
     }
   }
-  // Farthest-point order over the union, starting from the model's own first point.
-  const N = union.length, order = [0];
-  const gap = new Float64Array(N).fill(Infinity);
+  const m = mids.length / 2, N = n + m;
+  const X2 = new Float64Array(3 * N), C2 = new Float64Array(3 * N);
+  X2.set(X); C2.set(C);
+  for (let q = 0; q < m; q++) {
+    const i = mids[2 * q], j = mids[2 * q + 1];
+    for (let k = 0; k < 3; k++) {
+      X2[3 * (n + q) + k] = (X[3 * i + k] + X[3 * j + k]) / 2;
+      C2[3 * (n + q) + k] = (C[3 * i + k] + C[3 * j + k]) / 2;
+    }
+  }
+  return { X: X2, C: C2, n: N };
+}
+
+function densify(points) {
+  let set = { X: Float64Array.from(points.flatMap((q) => q.p)), C: Float64Array.from(points.flatMap((q) => q.c)), n: points.length };
+  while (set.n < POINTS * 1.3) set = densifyRound(set);
+  // Farthest-point order over the pool, starting from the model's own first point.
+  const { X, C, n } = set, order = [0];
+  const gap = new Float64Array(n).fill(Infinity);
   let last = 0;
-  while (order.length < Math.min(POINTS, N)) {
+  while (order.length < Math.min(POINTS, n)) {
+    const lx = X[3 * last], ly = X[3 * last + 1], lz = X[3 * last + 2];
     let far = -1, farGap = -1;
-    for (let i = 0; i < N; i++) {
-      const d = d2(union[i].p, union[last].p);
+    for (let i = 0; i < n; i++) {
+      const dx = X[3 * i] - lx, dy = X[3 * i + 1] - ly, dz = X[3 * i + 2] - lz;
+      const d = dx * dx + dy * dy + dz * dz;
       if (d < gap[i]) gap[i] = d;
       if (gap[i] > farGap) { farGap = gap[i]; far = i; }
     }
     order.push(far);
     last = far;
   }
-  return order.map((i) => union[i]);
+  return order.map((i) => ({ p: [X[3 * i], X[3 * i + 1], X[3 * i + 2]], c: [C[3 * i], C[3 * i + 1], C[3 * i + 2]] }));
 }
 
 const chunks = [];
 const header = Buffer.alloc(8);
 header.write("DSSP", 0, "ascii");
 header.writeUInt16LE(1, 4);
-const names = Object.keys(assets);
+const missing = MODELS.filter((name) => !(name in assets));
+if (missing.length) throw new Error("Draw_in_3D no longer has: " + missing.join(", "));
+const names = MODELS;
 header.writeUInt16LE(names.length, 6);
 chunks.push(header);
 
@@ -128,7 +157,7 @@ for (const name of names) {
   console.log(`${name.padEnd(18)} ${points.length} points, ${size} units`);
 }
 
-const out = join(here, "..", "Assets", "DroneStar", "Data", "ShapePack.bytes");
+const out = process.env.OUT || join(here, "..", "Assets", "DroneStar", "Data", "ShapePack.bytes");
 mkdirSync(dirname(out), { recursive: true });
 const buffer = Buffer.concat(chunks);
 writeFileSync(out, buffer);

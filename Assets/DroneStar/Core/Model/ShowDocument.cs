@@ -62,10 +62,10 @@ namespace DroneStar.Core
     public static class ShowBounds
     {
         public const int MinDrones = 1;
-        public const int MaxDrones = 4096;
+        public const int MaxDrones = 8192;
 
         /// <summary>Fleet sizes offered as presets in the editor.</summary>
-        public static readonly int[] FleetSizes = { 256, 512, 1024, 2048, 4096 };
+        public static readonly int[] FleetSizes = { 256, 512, 1024, 2048, 4096, 8192 };
         public const int MaxCues = 64;
         public const float MinSize = 4f;
         public const float MaxSize = 400f;

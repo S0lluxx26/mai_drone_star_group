@@ -35,7 +35,7 @@ namespace DroneStar.Core
 
         public static readonly IReadOnlyList<Template> Templates = new[]
         {
-            new Template { Name = "A Night of Stars", Description = "The 2048-drone flagship: sixteen scenes with full-colour 3D models (robot, whale, Eiffel Tower, starship...) and a starburst finale.", Create = StarGroupNight },
+            new Template { Name = "A Night of Stars", Description = "The 8,192-drone flagship: sixteen scenes with full-colour 3D models (robot, whale, Eiffel Tower, starship...) and a starburst finale. The Show tab's fleet presets fly it with fewer drones.", Create = StarGroupNight },
             new Template { Name = "Classic Night", Description = "The original 360-drone show: light enough for any device.", Create = ClassicNight },
             new Template { Name = "Heart & Rings", Description = "A short 200-drone wedding piece.", Create = HeartAndRings },
             new Template { Name = "Blank Show", Description = "One formation to start from.", Create = Blank },
@@ -43,15 +43,31 @@ namespace DroneStar.Core
 
         const float ShowAltitude = 62f;
 
-        /// <summary>Formation centre height for the 2048-drone flagship, metres.</summary>
+        /// <summary>Formation centre height for the flagship's 2048-drone design, metres.</summary>
         const float GrandAltitude = 100f;
 
+        /// <summary>Drones in the flagship show: about the size of today's record-setting shows.</summary>
+        public const int FlagshipDrones = 8192;
+
         /// <summary>
-        /// The flagship: 2048 drones, sixteen scenes mixing the studio's parametric shapes with full-colour 3D
-        /// models from the shape library (ported from the Draw_in_3D drone show). A 1.2 m minimum separation
-        /// and 12 m/s top speed are typical of large professional shows.
+        /// The flagship: 8,192 drones, sixteen scenes mixing the studio's parametric shapes with full-colour 3D
+        /// models from the shape library (ported from the Draw_in_3D drone show). Safety spacing fixes how many
+        /// drones a shape of a given size can hold, so more drones means bigger shapes drawn in finer detail.
+        /// The show is designed at 2048 drones and grown with <see cref="ShowScaler"/>, exactly as the editor's
+        /// fleet presets do, so every preset is the same show at another scale.
         /// </summary>
         public static ShowDocument StarGroupNight()
+        {
+            ShowDocument doc = StarGroupNightDesign();
+            ShowScaler.ResizeForDroneCount(doc, FlagshipDrones);
+            return doc;
+        }
+
+        /// <summary>
+        /// The flagship's design at 2048 drones. A 1.2 m minimum separation and 12 m/s top speed are typical of
+        /// large professional shows.
+        /// </summary>
+        static ShowDocument StarGroupNightDesign()
         {
             var doc = new ShowDocument
             {

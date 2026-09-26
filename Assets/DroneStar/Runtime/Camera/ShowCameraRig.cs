@@ -44,6 +44,9 @@ namespace DroneStar.App
         Func<Vector3> follow;
         Vector3 savedFocus;
         float savedDistance, savedYaw, savedPitch;
+        Vector3 showCenter = DefaultFocus;
+        float showRadius = 70f;
+        bool orbitTouched;
 
         public CameraMode Mode { get; private set; } = CameraMode.Orbit;
 
@@ -74,9 +77,27 @@ namespace DroneStar.App
             ModeChanged?.Invoke(mode);
         }
 
+        /// <summary>
+        /// The show's typical formation centre and half-size (from the app after each compile). The audience and
+        /// aerial views and the default orbit frame it, so bigger fleets, which fly bigger shapes, stay in view.
+        /// </summary>
+        public void SetShowEnvelope(Vector3 center, float radius)
+        {
+            showCenter = center;
+            showRadius = Mathf.Max(radius, 10f);
+            if (!orbitTouched && follow == null) FrameShow();
+        }
+
+        void FrameShow()
+        {
+            focus = showCenter;
+            distance = Mathf.Clamp(showRadius * 2.7f + 30f, 60f, 1000f);
+        }
+
         /// <summary>Frames a sphere in Orbit mode (e.g. the selected formation).</summary>
         public void Frame(Vector3 center, float radius)
         {
+            orbitTouched = true;
             follow = null;
             focus = center;
             distance = Mathf.Clamp(radius * 3.2f + 25f, 25f, 700f);
@@ -95,6 +116,7 @@ namespace DroneStar.App
                 savedYaw = yaw;
                 savedPitch = pitch;
             }
+            orbitTouched = true;
             follow = target;
             focus = target();
             distance = dist;
@@ -117,10 +139,10 @@ namespace DroneStar.App
         public void ResetView()
         {
             follow = null;
-            focus = DefaultFocus;
+            orbitTouched = false;
+            FrameShow();
             yaw = 0f;
             pitch = 9f;
-            distance = 190f;
         }
 
         public void SetCinematicPose(Vector3 position, Vector3 target, float fov, bool cut)
@@ -145,15 +167,24 @@ namespace DroneStar.App
                 {
                     float sway = Mathf.Sin(Time.unscaledTime * 0.21f) * 0.6f;
                     targetPosition = new Vector3(sway, 3.4f, NightEnvironment.ShoreZ - 14f);
-                    targetRotation = Quaternion.LookRotation(DefaultFocus + new Vector3(0f, 2f, 0f) - targetPosition);
-                    targetFov = 52f;
+                    // From the shore, look up to take in a typical formation and keep a sliver of the waterline;
+                    // a big show gets a wider lens, as a big show fills more of a spectator's view.
+                    float d = Mathf.Max(showCenter.z - targetPosition.z, 50f);
+                    float high = Mathf.Atan2(showCenter.y + showRadius - targetPosition.y, d);
+                    float low = Mathf.Min(Mathf.Atan2(showCenter.y - showRadius - targetPosition.y, d), -3f * Mathf.Deg2Rad);
+                    float aim = 0.5f * (high + low);
+                    targetRotation = Quaternion.LookRotation(new Vector3(showCenter.x - targetPosition.x, Mathf.Tan(aim) * d, d));
+                    targetFov = Mathf.Clamp((high - low) * Mathf.Rad2Deg * 1.1f, 52f, 80f);
                     break;
                 }
                 case CameraMode.Aerial:
-                    targetPosition = new Vector3(-150f, 190f, -210f);
-                    targetRotation = Quaternion.LookRotation(DefaultFocus - new Vector3(0f, 20f, 0f) - targetPosition);
+                {
+                    float scale = Mathf.Max(1f, showRadius / 70f);
+                    targetPosition = showCenter + new Vector3(-150f, 132f, -210f) * scale;
+                    targetRotation = Quaternion.LookRotation(showCenter - new Vector3(0f, 20f * scale, 0f) - targetPosition);
                     targetFov = 48f;
                     break;
+                }
                 case CameraMode.Cinematic:
                     targetPosition = cinematicPosition;
                     targetRotation = Quaternion.LookRotation((cinematicTarget - cinematicPosition).sqrMagnitude > 1e-4f ? cinematicTarget - cinematicPosition : Vector3.forward);
@@ -243,12 +274,14 @@ namespace DroneStar.App
 
         void Orbit(Vector2 delta)
         {
+            orbitTouched = true;
             yaw += delta.x * orbitSensitivity;
             pitch = Mathf.Clamp(pitch - delta.y * orbitSensitivity, -8f, 82f);
         }
 
         void Pan(Vector2 delta)
         {
+            if (delta.sqrMagnitude > 0.01f) orbitTouched = true;
             if (delta.sqrMagnitude > 0.01f && follow != null)
             {
                 // Panning away from a followed drone keeps the view where it is, at a normal orbit range.
@@ -265,6 +298,7 @@ namespace DroneStar.App
 
         void Zoom(float amount)
         {
+            orbitTouched = true;
             distance = Mathf.Clamp(distance * (1f + amount * zoomSensitivity), follow != null ? 1.5f : 8f, 1100f);
         }
     }

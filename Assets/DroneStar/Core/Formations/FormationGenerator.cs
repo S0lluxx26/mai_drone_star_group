@@ -51,7 +51,7 @@ namespace DroneStar.Core
         /// Bump whenever the generated layouts change: shipped assignment caches (the baked demo) are keyed by
         /// it, and the BakedDemoAssignments test fails until they are re-baked.
         /// </summary>
-        public const int Revision = 3;
+        public const int Revision = 4;
 
         struct Pt
         {
@@ -215,6 +215,8 @@ namespace DroneStar.Core
             // try is enough there; a small one gets several (the count after thinning is not monotonic).
             int request = droneCount;
             int attempts = droneCount - lit.Count <= Math.Max(8, droneCount / 50) ? 5 : 1;
+            // Models and sketches already use every point they have; asking for more cannot help.
+            if (spec.Kind == FormationKind.Model || spec.Kind == FormationKind.Custom) attempts = 0;
             for (int attempt = 0; attempt < attempts && lit.Count > 0 && lit.Count < droneCount; attempt++)
             {
                 request += (droneCount - lit.Count) * 2 + 4 * (attempt + 1);
@@ -863,25 +865,43 @@ namespace DroneStar.Core
             float innerRadius = filled ? Math.Min(coreRadius + spacing * 2.2f, half * 0.5f) : half * 0.1f;
             float sweep = ShowMath.TwoPi * 1.2f;
             float growth = MathF.Log(half / innerRadius) / sweep;
-            var lines = new List<Polyline>();
-            float[] offsets = filled ? new[] { -1f, 0f, 1f } : new[] { 0f };
-            for (int a = 0; a < arms; a++)
+
+            List<Polyline> Lanes(int perArm)
             {
-                foreach (float o in offsets)
+                var result = new List<Polyline>();
+                for (int a = 0; a < arms; a++)
                 {
-                    var pts = new Vector3[97];
-                    for (int i = 0; i < pts.Length; i++)
+                    for (int lane = 0; lane < perArm; lane++)
                     {
-                        float s = (float)i / (pts.Length - 1);
-                        float theta = sweep * s;
-                        float r = innerRadius * MathF.Exp(growth * theta);
-                        // Side lanes thicken the arm but never sit closer than the drone spacing.
-                        r += o * Math.Max(spacing * 1.05f, 0.1f * r * (0.35f + 0.65f * s));
-                        float angle = theta + ShowMath.TwoPi * a / arms;
-                        pts[i] = new Vector3(r * MathF.Cos(angle), r * MathF.Sin(angle), 0f);
+                        float o = lane - (perArm - 1) * 0.5f;
+                        var pts = new Vector3[97];
+                        for (int i = 0; i < pts.Length; i++)
+                        {
+                            float s = (float)i / (pts.Length - 1);
+                            float theta = sweep * s;
+                            float r = innerRadius * MathF.Exp(growth * theta);
+                            // Side lanes thicken the arm but never sit closer than the drone spacing.
+                            r += o * Math.Max(spacing * 1.05f, 0.1f * r * (0.35f + 0.65f * s));
+                            float angle = theta + ShowMath.TwoPi * a / arms;
+                            pts[i] = new Vector3(r * MathF.Cos(angle), r * MathF.Sin(angle), 0f);
+                        }
+                        result.Add(new Polyline(pts, false));
                     }
-                    lines.Add(new Polyline(pts, false));
                 }
+                return result;
+            }
+
+            // Filled arms have three lanes, and more when the fleet outgrows them: arms are lines, so their
+            // capacity grows with the galaxy's size while a bigger fleet's drone count grows with its area.
+            int lanes = filled ? 3 : 1;
+            List<Polyline> lines = Lanes(lanes);
+            while (filled && lanes < 9)
+            {
+                float length = 0f;
+                foreach (Polyline line in lines) length += line.Length;
+                if (length / spacing >= n - core.Count) break;
+                lanes += 2;
+                lines = Lanes(lanes);
             }
 
             List<Pt> armPts = SamplePolylines(lines, Math.Max(0, n - core.Count), spacing);
@@ -1189,7 +1209,9 @@ namespace DroneStar.Core
                 for (int i = 0; i < take; i++) candidates.Add(new Pt(model.Points[i] * half, (float)i / total, model.Colors[i]));
                 List<Pt> kept = GreedyThin(candidates, spacing);
                 if (kept.Count >= n || take >= total) return kept.Count > n ? kept.GetRange(0, n) : kept;
-                take = Math.Min(total, take + (n - kept.Count) * 2 + 16);
+                // Greedy thinning keeps the same leading points however far ahead it looks, so the pool can grow
+                // geometrically (a model too small for the fleet reaches the end of its pool in a few steps).
+                take = Math.Min(total, Math.Max(take * 2, take + (n - kept.Count) * 2 + 16));
             }
         }
 

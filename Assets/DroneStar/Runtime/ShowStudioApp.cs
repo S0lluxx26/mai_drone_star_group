@@ -15,6 +15,13 @@ namespace DroneStar.App
     public sealed class ShowStudioApp : MonoBehaviour
     {
         const float EditSettleSeconds = 0.12f;
+
+        /// <summary>
+        /// Phones open the flagship with this many drones (the same show at its 2K fleet preset, pre-solved):
+        /// sampling, colouring and uploading 8,192 drones every frame is more than a phone CPU keeps at 60 fps.
+        /// The Show tab's fleet presets still offer 8K.
+        /// </summary>
+        public const int PhoneFleet = 2048;
         const double CompileBudgetMs = 10.0;
         const double ValidateBudgetMs = 5.0;
 
@@ -33,6 +40,10 @@ namespace DroneStar.App
 
         readonly ShowCompiler compiler = new ShowCompiler();
         readonly Stopwatch stopwatch = new Stopwatch();
+        // Diagnostics for the log: wall time, work time and cache use of the current compile and safety check.
+        float jobStartedAt, validationStartedAt;
+        double jobWorkMs, validationWorkMs;
+        int hitsAtStart, missesAtStart;
         CompileJob job;
         int jobRevision = -1;
         int compiledRevision = -1;
@@ -87,7 +98,9 @@ namespace DroneStar.App
             Library = new ShowLibrary();
             LoadBundledData();
             if (swarm != null && (WebBridge.IsWeb || Application.isMobilePlatform)) swarm.DetailedCapacity = 128;
-            Session = new ShowEditSession(DemoShows.StarGroupNight());
+            ShowDocument flagship = DemoShows.StarGroupNight();
+            if (Application.isMobilePlatform) ShowScaler.ResizeForDroneCount(flagship, PhoneFleet);
+            Session = new ShowEditSession(flagship);
             Session.Changed += OnDocumentChanged;
             if (demo != null) demo.Initialize(this, cameraRig, score);
             if (cameraRig != null)
@@ -172,6 +185,10 @@ namespace DroneStar.App
             // Restarting is cheap: finished assignments stay in the compiler's cache.
             job = compiler.Begin(Session.Document);
             jobRevision = Session.Revision;
+            jobStartedAt = Time.realtimeSinceStartup;
+            jobWorkMs = 0;
+            hitsAtStart = compiler.CacheHits;
+            missesAtStart = compiler.CacheMisses;
         }
 
         void StepCompile()
@@ -182,8 +199,13 @@ namespace DroneStar.App
             {
                 while (!job.Step())
                 {
-                    if (stopwatch.Elapsed.TotalMilliseconds > CompileBudgetMs) return;
+                    if (stopwatch.Elapsed.TotalMilliseconds > CompileBudgetMs)
+                    {
+                        jobWorkMs += stopwatch.Elapsed.TotalMilliseconds;
+                        return;
+                    }
                 }
+                jobWorkMs += stopwatch.Elapsed.TotalMilliseconds;
             }
             catch (Exception e)
             {
@@ -195,6 +217,10 @@ namespace DroneStar.App
             }
 
             if (Show != null && Show.DroneCount != job.Result.DroneCount) StopCloseUp();
+            Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "[DroneStar] Planned {0} drones: {1} transitions from the cache, {2} solved; {3:0.0} s of work over {4:0.0} s",
+                job.Result.DroneCount, compiler.CacheHits - hitsAtStart, compiler.CacheMisses - missesAtStart,
+                jobWorkMs / 1000.0, Time.realtimeSinceStartup - jobStartedAt));
             Show = job.Result;
             compiledRevision = jobRevision;
             job = null;
@@ -202,11 +228,25 @@ namespace DroneStar.App
             Vector3[] pads = ToUnity(Show.PadPositions);
             if (environment != null) environment.SetPads(pads);
             if (swarm != null) swarm.SetPads(pads);
+            if (cameraRig != null && Show.CueTimings.Count > 0)
+            {
+                // Typical formation centre and size, so the fixed views frame big fleets (big shapes) too.
+                Vector3 sum = Vector3.zero;
+                float half = 0f;
+                foreach (CueTiming t in Show.CueTimings)
+                {
+                    sum += t.Formation.Center.ToUnity();
+                    half += t.Formation.HalfSize;
+                }
+                cameraRig.SetShowEnvelope(sum / Show.CueTimings.Count, half / Show.CueTimings.Count * 1.25f);
+            }
             // Any recompile can move drones, so old trail history would draw streaks to stale positions.
             resetTrails = true;
             forceRender = true;
             // 10 Hz on the web and for large fleets (closest approach is still solved between samples).
             validator = new SafetyValidator(Show, WebBridge.IsWeb || Show.DroneCount > 1000 ? 0.1f : SafetyValidator.DefaultStep);
+            validationStartedAt = Time.realtimeSinceStartup;
+            validationWorkMs = 0;
             Report = null;
             ShowCompiled?.Invoke();
         }
@@ -217,10 +257,16 @@ namespace DroneStar.App
             stopwatch.Restart();
             try
             {
-                while (!validator.Step(8))
+                // One time sample per step: at thousands of drones a sample alone can take milliseconds.
+                while (!validator.Step(1))
                 {
-                    if (stopwatch.Elapsed.TotalMilliseconds > ValidateBudgetMs) return;
+                    if (stopwatch.Elapsed.TotalMilliseconds > ValidateBudgetMs)
+                    {
+                        validationWorkMs += stopwatch.Elapsed.TotalMilliseconds;
+                        return;
+                    }
                 }
+                validationWorkMs += stopwatch.Elapsed.TotalMilliseconds;
             }
             catch (Exception e)
             {
@@ -230,6 +276,9 @@ namespace DroneStar.App
                 return;
             }
             Report = validator.Report;
+            Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "[DroneStar] Safety check {0}: {1:0.0} s of work over {2:0.0} s", Report.Passed ? "passed" : "found issues",
+                validationWorkMs / 1000.0, Time.realtimeSinceStartup - validationStartedAt));
             ValidationFinished?.Invoke();
         }
 

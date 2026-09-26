@@ -17,6 +17,20 @@ namespace DroneStar.Tests
     {
         const string PackPath = "Assets/DroneStar/Data/ShapePack.bytes";
 
+        /// <summary>
+        /// A compiler holding the shipped pre-solved flagship transitions, as the app has one. Tests that compile
+        /// the 8,192-drone flagship use it: solving its auctions from scratch takes minutes.
+        /// </summary>
+        public static ShowCompiler BakedCompiler()
+        {
+            var compiler = new ShowCompiler();
+            compiler.ImportCache(File.ReadAllBytes(Find("Assets/DroneStar/Data/DemoAssignments.bytes")));
+            return compiler;
+        }
+
+        /// <summary>The validator's time step the app uses for a fleet of this size.</summary>
+        public static float ValidationStep(int drones) => drones > 1000 ? 0.1f : SafetyValidator.DefaultStep;
+
         public static void EnsureShapeLibrary()
         {
             if (ShapeLibrary.IsLoaded) return;
