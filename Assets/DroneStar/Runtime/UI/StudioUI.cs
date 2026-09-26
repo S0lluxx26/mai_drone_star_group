@@ -77,6 +77,13 @@ namespace DroneStar.App
             if (app.CameraRig != null) app.CameraRig.ModeChanged += _ => RefreshAll();
 
             OnDocumentChanged();
+
+            // The editor is laid out for laptop and desktop screens; phones get a nudge toward the demo.
+            float shortSide = Mathf.Min(Screen.width, Screen.height) / Mathf.Max(Screen.dpi / 96f, 1f);
+            if (Screen.width < 1000 || shortSide < 560)
+            {
+                Toast("Drone Star Studio is designed for larger screens. Tap Demo Run to watch the show.", false);
+            }
         }
 
         void OnDestroy()

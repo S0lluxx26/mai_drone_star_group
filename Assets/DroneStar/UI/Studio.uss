@@ -833,6 +833,30 @@
     padding: 14px;
 }
 
+.ds-demo-hint {
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    align-self: center;
+    justify-content: center;
+    align-items: center;
+}
+
+.ds-demo-hint .ds-icon {
+    color: var(--ds-gold);
+    margin-right: 8px;
+}
+
+.ds-demo-hint-text {
+    padding: 6px 14px;
+    border-radius: 14px;
+    background-color: rgba(8, 6, 22, 0.6);
+    color: var(--ds-ink);
+    font-size: 13px;
+}
+
 .ds-demo-progress {
     position: absolute;
     left: 0;
@@ -845,6 +869,16 @@
 .ds-demo-progress-fill {
     height: 3px;
     background-color: var(--ds-gold);
+}
+
+.ds-sketch {
+    height: 200px;
+    overflow: hidden;
+    margin: 6px 0;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(0, 0, 0, 0.35);
 }
 
 .ds-help-grid {

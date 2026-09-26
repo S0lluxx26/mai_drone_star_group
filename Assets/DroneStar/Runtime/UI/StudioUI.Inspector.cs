@@ -128,7 +128,8 @@ namespace DroneStar.App
             // Formation -----------------------------------------------------
             FormationSpec f = cue.Formation;
             var formation = Ui.Section("Formation");
-            var kinds = new List<string>(Enum.GetNames(typeof(FormationKind)));
+            var kinds = new List<string>();
+            foreach (FormationKind k in Enum.GetValues(typeof(FormationKind))) kinds.Add(DemoShows.KindLabel(k));
             var kindField = new DropdownField(kinds, (int)f.Kind);
             kindField.RegisterValueChangedCallback(e =>
             {
@@ -137,7 +138,7 @@ namespace DroneStar.App
             });
             cueBindings.Add(new Binding(() =>
             {
-                if (SelectedCue != null) kindField.SetValueWithoutNotify(SelectedCue.Formation.Kind.ToString());
+                if (SelectedCue != null) kindField.SetValueWithoutNotify(DemoShows.KindLabel(SelectedCue.Formation.Kind));
             }));
             formation.Add(Ui.Field("Shape", kindField));
 
@@ -181,10 +182,7 @@ namespace DroneStar.App
             {
                 formation.Add(CueSlider("Turns", ShowBounds.MinTurns, ShowBounds.MaxTurns, 0.25f, c => c.Formation.Turns, (c, v) => c.Formation.Turns = v, v => v.ToString("0.##", Inv), "turns"));
             }
-            if (f.Kind == FormationKind.Custom)
-            {
-                formation.Add(Ui.Text(f.CustomPoints.Count + " custom points (imported from a show file).", "ds-hint"));
-            }
+            if (f.Kind == FormationKind.Custom) formation.Add(BuildSketchEditor());
             cueStats = Ui.Text("", "ds-stat-line");
             formation.Add(cueStats);
             cuePage.Add(formation);
@@ -279,6 +277,66 @@ namespace DroneStar.App
             }
             motion.Add(Ui.Text("Motions ease in and out, and parked drones stay still.", "ds-hint"));
             cuePage.Add(motion);
+        }
+
+        VisualElement BuildSketchEditor()
+        {
+            var box = new VisualElement();
+            box.Add(Ui.Text("Draw your own shape. Each stroke becomes a line of drones, spaced safely apart.", "ds-hint"));
+            var pad = new SketchPad(() => (IReadOnlyList<System.Numerics.Vector3>)SelectedCue?.Formation.CustomPoints ?? Array.Empty<System.Numerics.Vector3>());
+            cueBindings.Add(pad);
+            box.Add(pad);
+
+            var row = Ui.El("ds-row");
+            Button use = Ui.Button("Use drawing", Icon.Check, () =>
+            {
+                if (!pad.HasStrokes) return;
+                List<System.Numerics.Vector3> pts = CustomShapes.FromStrokes(pad.Strokes);
+                EditCue("Sketch shape", c => c.Formation.CustomPoints = pts);
+                pad.ClearStrokes();
+            }, "ds-btn--small ds-btn--primary", "Replace the shape with your drawing");
+            Button clear = Ui.Button("Clear", Icon.Trash, pad.ClearStrokes, "ds-btn--small", "Discard the strokes you have drawn");
+            use.SetEnabled(false);
+            clear.SetEnabled(false);
+            pad.StrokesChanged += () =>
+            {
+                use.SetEnabled(pad.HasStrokes);
+                clear.SetEnabled(pad.HasStrokes);
+            };
+            row.Add(use);
+            row.Add(clear);
+            row.Add(Ui.El("ds-spacer"));
+            row.Add(Ui.Button("Import CSV", Icon.Upload, ImportSketchPoints, "ds-btn--small", "Load x,y (or x,y,z) points from a CSV file"));
+            box.Add(row);
+            cueBindings.Add(new Binding(() =>
+            {
+                Cue c = SelectedCue;
+                if (c == null) return;
+                pad.tooltip = c.Formation.CustomPoints.Count + " points";
+            }));
+            return box;
+        }
+
+        void ImportSketchPoints()
+        {
+            void Apply(string text)
+            {
+                List<System.Numerics.Vector3> pts = CustomShapes.FromCsv(text);
+                if (pts.Count == 0)
+                {
+                    Toast("No x,y points found in that file.", true);
+                    return;
+                }
+                EditCue("Import sketch points", c =>
+                {
+                    c.Formation.Kind = FormationKind.Custom;
+                    c.Formation.CustomPoints = pts;
+                });
+                Toast("Imported " + pts.Count + " points.", false);
+            }
+
+            if (app.Bridge != null && app.Bridge.PickTextFile(Apply, err => Toast(err, true), ".csv,.txt,text/csv,text/plain")) return;
+            ShowCsvPicker(Apply);
         }
 
         VisualElement CueSlider(string label, float min, float max, float step, Func<Cue, float> get, Action<Cue, float> set, Func<float, string> format, string key)

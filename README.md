@@ -9,18 +9,24 @@
 
 Drone Star Studio is a complete show editor: lay out formations, colour them, give them motion,
 and the studio plans every flight path, checks the whole show for safety, and plays it back over a
-night-time lake with reflections, light trails, a city skyline and a generated soundtrack.
+dark blue night lake with reflections, light trails, a 3D city skyline and a generated soundtrack.
 Press **Demo Run** to watch the show as a cinematic presentation with titles, scene captions and camera cuts.
 
 | Editing a show | The demo run | Safety check |
 |---|---|---|
 | ![Editor](docs/media/editor.png) | ![Demo](docs/media/demo.png) | ![Safety](docs/media/safety.png) |
 
+| Sketch your own shape |
+|---|
+| ![Sketch](docs/media/sketch.png) |
+
 ## What you can do
 
 - **12 formation families** — grid curtain, ring, sphere, star, heart, helix, spiral galaxy, wave, cube,
   text (A–Z, 0–9; accents such as *Hà* fold to *HA*), flower and butterfly — filled or outlined,
   with depth layers, turn/tilt, size and position.
+- **Sketch** — draw your own shape with the mouse or a finger (each stroke becomes a line of drones), or
+  import `x,y[,z]` points from a CSV file.
 - **9 light effects** — solid, gradient, rainbow, chase, twinkle, pulse, radial, fire, off — from a
   vivid palette or any hex colour, with tempo and brightness.
 - **Motion while holding** — turntable, roll, breathe and wave, eased in and out so drones never jerk.

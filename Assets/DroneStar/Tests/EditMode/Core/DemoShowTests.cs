@@ -43,7 +43,9 @@ namespace DroneStar.Tests
                 Cue cue = DemoShows.NewCue(kind, 3);
                 ShowSanitizer.SanitizeCue(cue);
                 Assert.That(cue.Formation.Kind, Is.EqualTo(kind));
-                Assert.That(cue.Name, Does.StartWith(kind.ToString()));
+                Assert.That(cue.Name, Does.StartWith(DemoShows.KindLabel(kind)));
+                FormationResult f = FormationGenerator.Generate(cue.Formation, 200, 2.12f);
+                Assert.That(f.LitCount, Is.GreaterThan(20), kind + " lights a useful share of the drones");
             }
         }
     }

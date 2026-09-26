@@ -2,15 +2,15 @@ Shader "DroneStar/NightSky"
 {
     Properties
     {
-        _ZenithColor ("Zenith", Color) = (0.012, 0.018, 0.07, 1)
-        _HorizonColor ("Horizon", Color) = (0.11, 0.06, 0.2, 1)
-        _GlowColor ("Afterglow", Color) = (0.55, 0.16, 0.22, 1)
+        _ZenithColor ("Zenith", Color) = (0.008, 0.016, 0.06, 1)
+        _HorizonColor ("Horizon", Color) = (0.04, 0.08, 0.2, 1)
+        _GlowColor ("Horizon glow", Color) = (0.05, 0.1, 0.26, 1)
         _GlowDirection ("Afterglow direction", Vector) = (-0.6, 0, 1, 0)
         _MoonDirection ("Moon direction", Vector) = (0.45, 0.32, 0.83, 0)
         _MoonColor ("Moon", Color) = (1.0, 0.93, 0.8, 1)
         _StarDensity ("Star density", Range(0.9, 0.999)) = 0.9965
         _StarBrightness ("Star brightness", Float) = 2.2
-        _MilkyWay ("Milky Way strength", Float) = 0.22
+        _MilkyWay ("Milky Way strength", Float) = 0.16
     }
     SubShader
     {
@@ -85,7 +85,7 @@ Shader "DroneStar/NightSky"
                 float bandDistance = dot(dir, bandNormal);
                 float band = exp(-bandDistance * bandDistance * 22.0);
                 float clouds = DS_Fbm(dir * 6.0);
-                col += float3(0.32, 0.26, 0.5) * band * smoothstep(0.35, 0.85, clouds) * _MilkyWay * saturate(dir.y * 3.0);
+                col += float3(0.2, 0.26, 0.45) * band * smoothstep(0.35, 0.85, clouds) * _MilkyWay * saturate(dir.y * 3.0);
 
                 col += Stars(dir) * (1.0 + band * 1.5);
 
@@ -93,10 +93,11 @@ Shader "DroneStar/NightSky"
                 float3 moonDir = normalize(_MoonDirection.xyz);
                 float m = dot(dir, moonDir);
                 float disc = smoothstep(0.99975, 0.99985, m);
-                float halo = pow(saturate(m), 380.0) * 0.35 + pow(saturate(m), 30.0) * 0.06;
+                // A tight halo plus a faint cool wash, so the moon does not grey out the dark blue sky.
+                float halo = pow(saturate(m), 380.0) * 0.35 + pow(saturate(m), 60.0) * 0.03;
                 float craters = 0.82 + 0.18 * DS_Fbm(dir * 900.0);
                 col = lerp(col, _MoonColor.rgb * 2.2 * craters, disc);
-                col += _MoonColor.rgb * halo;
+                col += _MoonColor.rgb * float3(0.8, 0.88, 1.0) * halo;
                 return half4(col, 1.0);
             }
             ENDHLSL

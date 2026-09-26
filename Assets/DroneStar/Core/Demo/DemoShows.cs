@@ -111,13 +111,19 @@ namespace DroneStar.Core
             return doc;
         }
 
+        /// <summary>The name shown in the editor for a formation kind ("Custom" is presented as "Sketch").</summary>
+        public static string KindLabel(FormationKind kind) => kind == FormationKind.Custom ? "Sketch" : kind.ToString();
+
         /// <summary>A new cue with sensible defaults for the given shape, used by the editor's "Add cue".</summary>
         public static Cue NewCue(FormationKind kind, int index)
         {
             LedColor a = Palette[(index * 3) % Palette.Length];
             LedColor b = Palette[(index * 3 + 5) % Palette.Length];
-            float size = kind == FormationKind.Sphere ? 36f : kind == FormationKind.Text ? 64f : 56f;
-            return MakeCue(kind + " " + (index + 1), kind, size, light: Light(LightEffect.Gradient, a, b), hold: 8f);
+            float size = kind == FormationKind.Sphere ? 36f : kind == FormationKind.Text ? 64f : kind == FormationKind.Custom ? 80f : 56f;
+            Cue cue = MakeCue(KindLabel(kind) + " " + (index + 1), kind, size, light: Light(LightEffect.Gradient, a, b), hold: 8f,
+                layers: kind == FormationKind.Custom ? 2 : 1);
+            if (kind == FormationKind.Custom) cue.Formation.CustomPoints = CustomShapes.Smiley();
+            return cue;
         }
 
         static Cue MakeCue(string name, FormationKind kind, float size, LightSpec light, MotionSpec motion = null, float hold = 8f,

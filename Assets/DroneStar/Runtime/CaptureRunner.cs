@@ -10,8 +10,8 @@ namespace DroneStar.App
     /// <summary>
     /// Automated screenshots for visual review and store pages. Inert unless the player is started with
     /// <c>-capture &lt;folder&gt;</c>. Optional: <c>-captureTimes 5,30,90</c> (show seconds),
-    /// or <c>-captureTimes c0,c4</c> (scenes), <c>-captureCamera orbit|audience|aerial</c>, and <c>-demo</c>
-    /// to capture the cinematic run.
+    /// or <c>-captureTimes c0,c4</c> (scenes), <c>-captureCamera orbit|audience|aerial</c>, <c>-captureTab</c>,
+    /// <c>-captureSelect &lt;cue&gt;</c>, <c>-captureAddCue &lt;kind&gt;</c>, and <c>-demo</c> to capture the cinematic run.
     /// </summary>
     public sealed class CaptureRunner : MonoBehaviour
     {
@@ -54,6 +54,12 @@ namespace DroneStar.App
             {
                 var ui = FindAnyObjectByType<StudioUI>();
                 if (ui != null) ui.ShowInspectorTab(tab);
+            }
+            string add = Arg("-captureAddCue");
+            if (!string.IsNullOrEmpty(add) && Enum.TryParse(add, true, out Core.FormationKind kind))
+            {
+                app.AddCue(kind);
+                while (app.ShowIsStale || app.IsCompiling) yield return null;
             }
             string select = Arg("-captureSelect");
             if (!string.IsNullOrEmpty(select) && int.TryParse(select, NumberStyles.Integer, CultureInfo.InvariantCulture, out int selected))

@@ -45,12 +45,12 @@ namespace DroneStar.App
         /// Web: opens the browser file picker and calls back with the file text. Desktop: not available
         /// (the Open dialog lists files placed in <see cref="ImportFolder"/> instead).
         /// </summary>
-        public bool PickTextFile(Action<string> onText, Action<string> onError)
+        public bool PickTextFile(Action<string> onText, Action<string> onError, string accept = ".json,.dronestar.json,application/json")
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             pendingImport = onText;
             pendingImportError = onError;
-            DroneStar_OpenTextFile(gameObject.name, nameof(OnFilePicked), ".json,.dronestar.json,application/json");
+            DroneStar_OpenTextFile(gameObject.name, nameof(OnFilePicked), accept);
             return true;
 #else
             return false;

@@ -52,10 +52,11 @@ namespace DroneStar.App
             Spawn("Audience Shore", BuildShore(), landMaterial);
             Spawn("Far Shore", BuildFarShore(), landMaterial);
             Spawn("Hills", BuildHills(rng), hillMaterial);
-            Spawn("City Skyline", BuildCity(rng, out List<Vector3> beacons), cityMaterial);
+            Spawn("City Skyline", BuildCity(rng, out List<Vector3> beacons, out List<Vector3> streetLights), cityMaterial);
             Spawn("Trees", BuildTrees(rng), treeMaterial);
             SpawnLights("Shore Lanterns", ShoreLanterns(rng), lampMaterial);
             SpawnLights("Tower Beacons", beacons, lampMaterial, new Color(1f, 0.08f, 0.04f), 5f);
+            SpawnLights("City Street Lights", streetLights, lampMaterial, null, 2.2f);
         }
 
         void ApplyAtmosphere()
@@ -63,11 +64,11 @@ namespace DroneStar.App
             if (skyMaterial != null) RenderSettings.skybox = skyMaterial;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.05f, 0.04f, 0.1f);
+            RenderSettings.fogColor = new Color(0.015f, 0.03f, 0.07f);
             RenderSettings.fogDensity = 0.00055f;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.1f, 0.11f, 0.2f);
-            RenderSettings.ambientEquatorColor = new Color(0.12f, 0.08f, 0.13f);
+            RenderSettings.ambientSkyColor = new Color(0.06f, 0.09f, 0.18f);
+            RenderSettings.ambientEquatorColor = new Color(0.04f, 0.06f, 0.12f);
             RenderSettings.ambientGroundColor = new Color(0.025f, 0.025f, 0.035f);
         }
 
@@ -264,28 +265,130 @@ namespace DroneStar.App
             return mesh;
         }
 
-        static Mesh BuildCity(System.Random rng, out List<Vector3> beacons)
+        /// <summary>Centre of the lake the skyline wraps around.</summary>
+        static readonly Vector3 CityCentre = new Vector3(0f, 0f, 260f);
+
+        static Mesh BuildCity(System.Random rng, out List<Vector3> beacons, out List<Vector3> streetLights)
         {
             beacons = new List<Vector3>();
+            streetLights = new List<Vector3>();
             var kit = new MeshKit();
-            for (int row = 0; row < 3; row++)
+            // Rows from the embankment back: low waterfront blocks, mid-rise, then the high-rise core.
+            var rows = new (float radius, float minH, float maxH, float minW, float maxW)[]
             {
-                float radius = 760f + row * 150f;
-                float angle = -62f;
-                while (angle < 62f)
+                (722f, 8f, 26f, 14f, 30f),
+                (800f, 22f, 70f, 16f, 34f),
+                (905f, 45f, 125f, 18f, 38f),
+                (1020f, 70f, 175f, 22f, 44f),
+            };
+            for (int r = 0; r < rows.Length; r++)
+            {
+                var row = rows[r];
+                float angle = -64f + (float)rng.NextDouble() * 3f;
+                while (angle < 64f)
                 {
-                    float width = 18f + (float)rng.NextDouble() * 34f;
-                    float depth = 18f + (float)rng.NextDouble() * 30f;
-                    float centerBias = 1f - Mathf.Abs(angle) / 70f;
-                    float height = 18f + (float)(rng.NextDouble() * rng.NextDouble()) * 150f * (0.45f + centerBias) + row * 12f;
+                    float width = Mathf.Lerp(row.minW, row.maxW, (float)rng.NextDouble());
+                    float depth = width * Mathf.Lerp(0.6f, 1.1f, (float)rng.NextDouble());
+                    float centreBias = 1f - Mathf.Abs(angle) / 72f;
+                    float t = (float)(rng.NextDouble() * rng.NextDouble());
+                    float height = Mathf.Lerp(row.minH, row.maxH, Mathf.Clamp01(t * (0.55f + 0.9f * centreBias)));
                     float rad = angle * Mathf.Deg2Rad;
-                    var pos = new Vector3(Mathf.Sin(rad) * radius, 1f + height * 0.5f, 260f + Mathf.Cos(rad) * radius);
-                    kit.Box(pos, new Vector3(width, height, depth), (float)rng.NextDouble());
-                    if (height > 120f) beacons.Add(pos + Vector3.up * (height * 0.5f + 1.5f));
-                    angle += (width + 6f + (float)rng.NextDouble() * 18f) / (radius * Mathf.Deg2Rad);
+                    float radius = row.radius + ((float)rng.NextDouble() - 0.5f) * 24f;
+                    var pos = CityCentre + new Vector3(Mathf.Sin(rad) * radius, 1f, Mathf.Cos(rad) * radius);
+                    // Face the lake, with some jitter so neighbouring faces catch the moon differently.
+                    Vector3 away = pos - CityCentre;
+                    float yaw = Mathf.Atan2(away.x, away.z) * Mathf.Rad2Deg + ((float)rng.NextDouble() - 0.5f) * 36f;
+                    AddBuilding(kit, rng, pos, width, depth, height, yaw, (float)rng.NextDouble(), r, beacons);
+                    angle += (width + 4f + (float)rng.NextDouble() * 14f) / (radius * Mathf.Deg2Rad);
                 }
             }
+
+            // Street lights along the far embankment: a fine line of warm points that sets the scale.
+            for (float a = -66f; a <= 66f; a += 0.55f)
+            {
+                float rad = a * Mathf.Deg2Rad;
+                streetLights.Add(CityCentre + new Vector3(Mathf.Sin(rad) * 704f, 5.5f, Mathf.Cos(rad) * 704f));
+            }
             return kit.ToMesh("City Skyline");
+        }
+
+        static void AddBuilding(MeshKit kit, System.Random rng, Vector3 basePos, float width, float depth, float height,
+            float yaw, float seed, int row, List<Vector3> beacons)
+        {
+            double roll = rng.NextDouble();
+            float style = height > 80f
+                ? (roll < 0.55 ? 0.5f : roll < 0.8 ? 0f : 1f)
+                : height > 30f ? (roll < 0.15 ? 0.5f : roll < 0.6 ? 0f : 1f)
+                : (roll < 0.6 ? 0f : 1f);
+            bool crownLights = height > 90f && rng.NextDouble() < 0.45;
+            float y = basePos.y;
+            float top;
+
+            if (height > 70f && rng.NextDouble() < 0.16)
+            {
+                // Round tower.
+                kit.CurrentColor = new Color(style, crownLights ? 1f : 0f, 0f, 1f);
+                float r = Mathf.Min(width, depth) * 0.5f;
+                kit.Tower(new Vector3(basePos.x, y, basePos.z), r, height, 20, seed);
+                top = y + height;
+                kit.CurrentColor = new Color(style, 0f, 0f, 1f);
+                kit.Box(new Vector3(basePos.x, top + 2f, basePos.z), new Vector3(r * 0.9f, 4f, r * 0.9f), seed, yawDegrees: yaw, wallPart: MeshKit.PartPlain);
+                top += 4f;
+            }
+            else if (height > 80f && rng.NextDouble() < 0.75)
+            {
+                // Tower with setbacks: base, middle and top sections, each narrower.
+                float[] share = { 0.52f, 0.3f, 0.18f };
+                float[] scale = { 1f, 0.8f, 0.6f };
+                for (int k = 0; k < 3; k++)
+                {
+                    float h = height * share[k];
+                    kit.CurrentColor = new Color(style, k == 2 && crownLights ? 1f : 0f, 0f, 1f);
+                    kit.Box(new Vector3(basePos.x, y + h * 0.5f, basePos.z), new Vector3(width * scale[k], h, depth * scale[k]), seed, yawDegrees: yaw);
+                    y += h;
+                }
+                top = y;
+                kit.CurrentColor = new Color(style, 0f, 0f, 1f);
+                double feature = rng.NextDouble();
+                if (feature < 0.4)
+                {
+                    float spire = height * Mathf.Lerp(0.12f, 0.22f, (float)rng.NextDouble());
+                    kit.Box(new Vector3(basePos.x, top + spire * 0.5f, basePos.z), new Vector3(1.4f, spire, 1.4f), seed, yawDegrees: yaw, wallPart: MeshKit.PartPlain);
+                    top += spire;
+                }
+                else if (feature < 0.7)
+                {
+                    float pyramid = width * 0.45f;
+                    kit.Pyramid(new Vector3(basePos.x, top, basePos.z), width * 0.3f, pyramid, yaw, seed);
+                    top += pyramid;
+                }
+                else
+                {
+                    AddRooftopPlant(kit, rng, new Vector3(basePos.x, top, basePos.z), width * 0.6f, depth * 0.6f, yaw, seed);
+                }
+            }
+            else
+            {
+                kit.CurrentColor = new Color(style, 0f, 0f, 1f);
+                kit.Box(new Vector3(basePos.x, y + height * 0.5f, basePos.z), new Vector3(width, height, depth), seed, yawDegrees: yaw);
+                top = y + height;
+                if (rng.NextDouble() < 0.7) AddRooftopPlant(kit, rng, new Vector3(basePos.x, top, basePos.z), width, depth, yaw, seed);
+            }
+
+            if (top > 120f) beacons.Add(new Vector3(basePos.x, top + 1.5f, basePos.z));
+            kit.CurrentColor = Color.white;
+        }
+
+        static void AddRooftopPlant(MeshKit kit, System.Random rng, Vector3 roof, float width, float depth, float yaw, float seed)
+        {
+            int units = 1 + rng.Next(3);
+            Quaternion q = Quaternion.Euler(0f, yaw, 0f);
+            for (int u = 0; u < units; u++)
+            {
+                var size = new Vector3(Mathf.Lerp(3f, width * 0.35f, (float)rng.NextDouble()), Mathf.Lerp(2f, 5f, (float)rng.NextDouble()), Mathf.Lerp(3f, depth * 0.35f, (float)rng.NextDouble()));
+                var offset = new Vector3(((float)rng.NextDouble() - 0.5f) * (width - size.x) * 0.8f, 0f, ((float)rng.NextDouble() - 0.5f) * (depth - size.z) * 0.8f);
+                kit.Box(roof + q * offset + Vector3.up * size.y * 0.5f, size, seed, yawDegrees: yaw, wallPart: MeshKit.PartPlain);
+            }
         }
 
         static Mesh BuildTrees(System.Random rng)

@@ -18,6 +18,8 @@ namespace DroneStar.App
         VisualElement demoEndCard;
         VisualElement demoProgressFill;
         IconElement demoPlayIcon;
+        VisualElement demoSoundHint;
+        bool userInteracted;
 
         // ------------------------------------------------------------------ dialogs
 
@@ -143,6 +145,51 @@ namespace DroneStar.App
                 Ui.Button("Close", null, CloseDialog)));
         }
 
+        void ShowCsvPicker(Action<string> onText)
+        {
+            string folder = WebBridge.ImportFolder;
+            VisualElement d = OpenDialog("Import sketch points", "CSV files in " + folder + " (one x,y or x,y,z point per line).");
+            var list = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
+            list.AddToClassList("ds-dialog-list");
+            var files = new List<string>();
+            try
+            {
+                if (Directory.Exists(folder))
+                {
+                    files.AddRange(Directory.GetFiles(folder, "*.csv"));
+                    files.AddRange(Directory.GetFiles(folder, "*.txt"));
+                }
+            }
+            catch (Exception e)
+            {
+                Toast("Could not read the import folder: " + e.Message, true);
+            }
+            foreach (string f in files)
+            {
+                string path = f;
+                list.Add(ListItem(Path.GetFileName(path), null, () =>
+                {
+                    CloseDialog();
+                    try
+                    {
+                        if (new FileInfo(path).Length > WebBridge.MaxImportBytes)
+                        {
+                            Toast("That file is larger than 2 MB.", true);
+                            return;
+                        }
+                        onText(File.ReadAllText(path));
+                    }
+                    catch (Exception e)
+                    {
+                        Toast("Import failed: " + e.Message, true);
+                    }
+                }));
+            }
+            if (files.Count == 0) list.Add(Ui.Text("No .csv files yet. Copy one into the folder above, then reopen this dialog.", "ds-hint"));
+            d.Add(list);
+            d.Add(DialogButtons(Ui.Button("Close", null, CloseDialog)));
+        }
+
         void ConfirmDelete(string name)
         {
             VisualElement d = OpenDialog("Delete “" + name + "”?", "This removes the saved copy from " + app.Library.Location + ". It cannot be undone.");
@@ -245,6 +292,16 @@ namespace DroneStar.App
             bar.Add(Ui.Button("Exit demo", Icon.Close, () => app.Demo.End(), null, "Back to the editor (Esc)"));
             demoLayer.Add(bar);
 
+            // Browsers keep audio muted until the first click or key press on the page.
+            demoSoundHint = Ui.El("ds-demo-hint");
+            demoSoundHint.pickingMode = PickingMode.Ignore;
+            var hintIcon = new IconElement(Icon.Sound);
+            demoSoundHint.Add(hintIcon);
+            var hintText = Ui.Text("Click anywhere for sound", "ds-demo-hint-text");
+            hintText.pickingMode = PickingMode.Ignore;
+            demoSoundHint.Add(hintText);
+            demoLayer.Add(demoSoundHint);
+
             var progress = Ui.El("ds-demo-progress");
             progress.pickingMode = PickingMode.Ignore;
             demoProgressFill = Ui.El("ds-demo-progress-fill");
@@ -278,6 +335,9 @@ namespace DroneStar.App
             float duration = app.Show != null ? app.Show.Duration : 1f;
             demoProgressFill.style.width = Length.Percent(Mathf.Clamp01(app.Clock.Time / Mathf.Max(duration, 1e-3f)) * 100f);
             demoPlayIcon.Icon = app.Clock.Playing ? Icon.Pause : Icon.Play;
+            if (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.touchCount > 0) userInteracted = true;
+            bool showHint = WebBridge.IsWeb && !userInteracted && app.Score != null && !app.Score.Muted;
+            demoSoundHint.EnableInClassList("hidden", !showHint);
         }
     }
 }

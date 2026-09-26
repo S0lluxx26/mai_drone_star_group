@@ -25,15 +25,15 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _MilkyWay: 0.22
+    - _MilkyWay: 0.16
     - _StarBrightness: 2.2
     - _StarDensity: 0.9965
     m_Colors:
-    - _GlowColor: {r: 0.54999995, g: 0.15999997, b: 0.21999997, a: 1}
+    - _GlowColor: {r: 0.05, g: 0.1, b: 0.26, a: 1}
     - _GlowDirection: {r: -0.6, g: 0, b: 1, a: 0}
-    - _HorizonColor: {r: 0.10999996, g: 0.059999965, b: 0.19999996, a: 1}
+    - _HorizonColor: {r: 0.04, g: 0.08, b: 0.2, a: 1}
     - _MoonColor: {r: 1, g: 0.93, b: 0.8, a: 1}
     - _MoonDirection: {r: 0.45140153, g: 0.32099664, b: 0.83258504, a: 0}
-    - _ZenithColor: {r: 0.012, g: 0.018, b: 0.06999998, a: 1}
+    - _ZenithColor: {r: 0.008, g: 0.016, b: 0.06, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

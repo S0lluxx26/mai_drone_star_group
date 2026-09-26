@@ -124,9 +124,9 @@ namespace DroneStar.App
             grid.style.flexWrap = Wrap.Wrap;
             foreach (FormationKind kind in Enum.GetValues(typeof(FormationKind)))
             {
-                if (kind == FormationKind.Custom) continue;
                 FormationKind k = kind;
-                grid.Add(Ui.Button(kind.ToString(), null, () => app.AddCue(k), "ds-btn--small ds-add-kind", "Insert a " + kind + " cue after the selection"));
+                string label = DemoShows.KindLabel(kind);
+                grid.Add(Ui.Button(label, null, () => app.AddCue(k), "ds-btn--small ds-add-kind", "Insert a " + label + " cue after the selection"));
             }
             addRow.Add(grid);
             panel.Add(addRow);
@@ -181,7 +181,7 @@ namespace DroneStar.App
                 card.Add(swatch);
 
                 var body = Ui.El("ds-cue-body");
-                body.Add(Ui.Text((i + 1).ToString("00", CultureInfo.InvariantCulture) + "  " + cue.Formation.Kind.ToString().ToUpperInvariant(), "ds-cue-index"));
+                body.Add(Ui.Text((i + 1).ToString("00", CultureInfo.InvariantCulture) + "  " + DemoShows.KindLabel(cue.Formation.Kind).ToUpperInvariant(), "ds-cue-index"));
                 body.Add(Ui.Text(cue.Name, "ds-cue-name"));
                 string meta;
                 if (fresh && i < app.Show.CueTimings.Count)

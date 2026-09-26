@@ -198,23 +198,12 @@ namespace DroneStar.App
                     arm.Vertices[v] = q * arm.Vertices[v];
                     arm.Normals[v] = q * arm.Normals[v];
                 }
-                Append(kit, arm);
+                kit.Append(arm);
                 Vector3 motor = dir * 0.2f;
                 kit.Cylinder(motor + Vector3.up * 0.01f, 0.018f, 0.03f, 8);
                 kit.Cylinder(motor + Vector3.up * 0.042f, 0.075f, 0.004f, 14);
             }
             return kit.ToMesh("Airframe");
-        }
-
-        static void Append(MeshKit into, MeshKit from)
-        {
-            int offset = into.Vertices.Count;
-            into.Vertices.AddRange(from.Vertices);
-            into.Normals.AddRange(from.Normals);
-            into.Uv0.AddRange(from.Uv0);
-            into.Uv1.AddRange(from.Uv1);
-            into.Colors.AddRange(from.Colors);
-            foreach (int t in from.Triangles) into.Triangles.Add(t + offset);
         }
 
         void OnDestroy()

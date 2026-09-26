@@ -141,6 +141,9 @@ namespace DroneStar.Core
                     return true;
                 case FormationKind.Ring:
                     return spec.Style == FillStyle.Outline;
+                case FormationKind.Custom:
+                    // Drawn sketches are flat; imported 3D point clouds are not.
+                    return spec.CustomPoints != null && spec.CustomPoints.Count > 0 && spec.CustomPoints.TrueForAll(p => p.Z == 0f);
                 default:
                     return false;
             }

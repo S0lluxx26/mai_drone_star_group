@@ -4,15 +4,15 @@ Shader "DroneStar/Water"
     // Drone reflections are drawn on top by DroneGlow with _REFLECTION enabled.
     Properties
     {
-        _DeepColor ("Deep colour", Color) = (0.004, 0.012, 0.03, 1)
-        _ZenithColor ("Sky zenith", Color) = (0.012, 0.018, 0.07, 1)
-        _HorizonColor ("Sky horizon", Color) = (0.11, 0.06, 0.2, 1)
-        _GlowColor ("Afterglow", Color) = (0.55, 0.16, 0.22, 1)
+        _DeepColor ("Deep colour", Color) = (0.0, 0.006, 0.02, 1)
+        _ZenithColor ("Sky zenith", Color) = (0.008, 0.016, 0.06, 1)
+        _HorizonColor ("Sky horizon", Color) = (0.04, 0.08, 0.2, 1)
+        _GlowColor ("Horizon glow", Color) = (0.05, 0.1, 0.26, 1)
         _GlowDirection ("Afterglow direction", Vector) = (-0.6, 0, 1, 0)
         _MoonDirection ("Moon direction", Vector) = (0.45, 0.32, 0.83, 0)
         _MoonColor ("Moon", Color) = (1.0, 0.93, 0.8, 1)
         _WaveStrength ("Wave strength", Float) = 0.35
-        _CityGlow ("City glow on water", Color) = (0.25, 0.12, 0.05, 1)
+        _CityGlow ("City glow on water", Color) = (0.1, 0.07, 0.04, 1)
     }
     SubShader
     {
@@ -94,7 +94,7 @@ Shader "DroneStar/Water"
                 // Warm light from the far shore city, strongest on distant water.
                 float farWater = saturate((i.positionWS.z - 50.0) / 600.0) * saturate(1.0 - R.y * 4.0);
 
-                float3 col = _DeepColor.rgb * (1.0 - fresnel) + sky * fresnel * 1.1 + _MoonColor.rgb * glint + _CityGlow.rgb * farWater * fresnel;
+                float3 col = _DeepColor.rgb * (1.0 - fresnel) + sky * fresnel * 0.75 + _MoonColor.rgb * glint + _CityGlow.rgb * farWater * fresnel;
                 col = MixFog(col, i.fogFactor);
                 return half4(col, 1.0);
             }

@@ -119,6 +119,19 @@ namespace DroneStar.Tests
         }
 
         [UnityTest]
+        public IEnumerator SketchCueShowsDrawingPadAndFlies()
+        {
+            app.Select(0, seek: false);
+            app.AddCue(FormationKind.Custom);
+            Assert.That(app.Session.Document.Cues[app.SelectedCue].Formation.Kind, Is.EqualTo(FormationKind.Custom));
+            yield return null;
+            var doc = UnityEngine.Object.FindAnyObjectByType<UIDocument>();
+            Assert.That(doc.rootVisualElement.Q(className: "ds-sketch"), Is.Not.Null, "the Cue tab shows the sketch pad");
+            yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 60f, "recompile");
+            Assert.That(app.Show.CueTimings[app.SelectedCue].Formation.LitCount, Is.GreaterThan(50));
+        }
+
+        [UnityTest]
         public IEnumerator PlaybackAdvancesAndSeekClamps()
         {
             app.Seek(10f);

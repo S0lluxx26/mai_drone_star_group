@@ -17,7 +17,7 @@ is safe lives in the core, which compiles under plain .NET and is tested in seco
 | Area | Types | Notes |
 |---|---|---|
 | Model | `ShowDocument`, `Cue`, `FormationSpec`, `LightSpec`, `MotionSpec`, `SafetyLimits`, `LaunchPadSpec`, `ShowSanitizer` | Every edit and every load is clamped to `ShowBounds`, so NaN/negative/huge values never reach the planner. |
-| Formations | `FormationGenerator`, `StrokeFont`, `SpatialGrid` | Always returns exactly *N* slots, pairwise ≥ spacing. Filled shapes use a hex lattice whose pitch is bisected to fit *N*; outlines use arc-length sampling capped by spacing; parametric shapes (sphere, torus, grid, wave) binary-search the largest count that keeps spacing. A greedy thinning pass is the final guarantee. Surplus drones park dark on a horizontal grid behind the formation, outside the sphere the formation can sweep while it moves. |
+| Formations | `FormationGenerator`, `StrokeFont`, `CustomShapes`, `SpatialGrid` | Always returns exactly *N* slots, pairwise ≥ spacing. Filled shapes use a hex lattice whose pitch is bisected to fit *N*; outlines use arc-length sampling capped by spacing; parametric shapes (sphere, torus, grid, wave) binary-search the largest count that keeps spacing. A greedy thinning pass is the final guarantee. Surplus drones park dark on a horizontal grid behind the formation, outside the sphere the formation can sweep while it moves. |
 | Planning | `AssignmentSolver`, `ShowCompiler`, `CompileJob`, `CompiledShow`, `HoldMotion` | Slot-to-slot permutations (not drone-to-slot) are solved and cached by a fingerprint of both position sets, so they do not depend on drone identities and survive unrelated edits. The timeline is shared by all drones; sampling an instant is a binary search plus O(N). |
 | Lighting | `LightEngine`, `LedColor` | Pure function of (effect, slot, drone, time). Transits cross-fade between the outgoing and incoming cue's effect. Parked slots are black. |
 | Safety | `SafetyValidator`, `ValidationReport` | Samples at 20 Hz; for every pair found in a spatial hash sized to the separation plus twice the largest step, computes the closest approach of the two linear motions between samples. Violations are merged into time intervals per kind. |
@@ -43,8 +43,14 @@ transition by hand).
   LEDs; the same mesh drawn with `_REFLECTION` mirrors each LED about the water level and projects it
   onto the lake along the line of sight, so shore geometry still occludes it. Light trails are a line
   mesh fed by a 14-sample ring buffer; airframes are drawn with `Graphics.RenderMeshInstanced`.
-- **NightEnvironment** — procedural lake, shore, trees, lanterns, launch barge with pad lights, city
-  skyline (window shader with metre-space UVs) and hills; fixed seed, no downloaded assets.
+- **NightEnvironment** — procedural lake, shore, trees, lanterns, launch barge with pad lights and hills,
+  under a very dark blue sky over black-blue water; fixed seed, no downloaded assets. The skyline is four
+  rows of turned buildings: waterfront blocks, mid-rise, and towers with setbacks, spires, pyramid crowns,
+  round towers and rooftop plant, plus street lights along the far embankment.
+- **CityWindows.shader** — moonlight and sky/ground ambient per face, corner and ground shading, three
+  facade types (punched windows, glass curtain wall, ribbon windows), sky reflections in glass, crown
+  lighting on some towers. Far away, windows merge into larger groups that stay crisp points of light
+  instead of shimmering or washing out.
 - **ShowCameraRig** — orbit/pan/zoom (mouse and touch), audience and aerial views, and cinematic poses.
 - **DemoDirector** — title card, one shot per scene (orbit, shore push-in, lake-level, aerial, dolly)
   with cuts at scene changes, captions, soundtrack (`AmbientScore`, synthesised in chunks) and end card.
