@@ -16,6 +16,8 @@
     --ds-error: #FF4D5E;
     font-size: 13px;
     color: var(--ds-ink);
+    /* Be Vietnam Pro (SIL OFL): full Vietnamese coverage for names such as Chim Lạc and Đông Sơn. */
+    -unity-font-definition: url("Fonts/BeVietnamPro-Regular.ttf");
 }
 
 .ds-root {
@@ -42,7 +44,7 @@
     border-color: var(--ds-line);
     background-color: rgba(255, 255, 255, 0.05);
     color: var(--ds-ink);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     font-size: 12px;
     transition-property: background-color, border-color, scale;
     transition-duration: 0.12s;
@@ -149,7 +151,7 @@
 
 .ds-brand-title {
     font-size: 15px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     color: var(--ds-ink);
 }
 
@@ -219,7 +221,7 @@
     font-size: 11px;
     letter-spacing: 1.5px;
     color: var(--ds-ink-dim);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     margin: 2px 6px 8px 6px;
 }
 
@@ -274,11 +276,11 @@
 .ds-cue-index {
     color: var(--ds-ink-faint);
     font-size: 10px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
 }
 
 .ds-cue-name {
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
@@ -332,7 +334,7 @@
     border-width: 0;
     background-color: rgba(0, 0, 0, 0);
     color: var(--ds-ink-dim);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     font-size: 12px;
 }
 
@@ -364,7 +366,7 @@
     font-size: 11px;
     letter-spacing: 1.4px;
     color: var(--ds-gold);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     margin: 4px 0 6px 0;
 }
 
@@ -473,7 +475,7 @@
 
 .ds-verdict-title {
     font-size: 15px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     margin-left: 8px;
 }
 
@@ -549,7 +551,7 @@
 
 .ds-time {
     font-size: 14px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     min-width: 128px;
     margin: 0 10px;
     color: var(--ds-ink);
@@ -598,7 +600,7 @@
 
 .ds-seg-label {
     font-size: 10px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     color: rgba(15, 8, 30, 0.9);
     margin-left: 4px;
     white-space: nowrap;
@@ -685,7 +687,7 @@
 
 .ds-dialog-title {
     font-size: 18px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     margin-bottom: 4px;
 }
 
@@ -718,7 +720,7 @@
 }
 
 .ds-list-item-title {
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
 }
 
 .ds-list-item-sub {
@@ -748,7 +750,7 @@
 
 .ds-loading-title {
     font-size: 26px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     letter-spacing: 4px;
     color: var(--ds-gold);
 }
@@ -784,12 +786,12 @@
     font-size: 16px;
     letter-spacing: 8px;
     color: var(--ds-gold);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
 }
 
 .ds-demo-headline {
     font-size: 54px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     color: #FFFFFF;
     margin: 6px 0;
 }
@@ -813,7 +815,7 @@
 
 .ds-demo-caption-title {
     font-size: 26px;
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     color: #FFFFFF;
 }
 
@@ -889,7 +891,7 @@
 .ds-help-key {
     width: 40%;
     color: var(--ds-gold);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
     margin: 2px 0;
 }
 
@@ -928,7 +930,7 @@
 
 .ds-root .unity-base-popup-field__text {
     color: var(--ds-ink);
-    -unity-font-style: bold;
+    -unity-font-definition: url("Fonts/BeVietnamPro-SemiBold.ttf");
 }
 
 .ds-root .unity-base-popup-field__arrow {

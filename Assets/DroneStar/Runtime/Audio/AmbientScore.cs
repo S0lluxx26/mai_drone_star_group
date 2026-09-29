@@ -28,11 +28,36 @@ namespace DroneStar.App
         AudioSource music;
         AudioSource chimes;
         AudioClip loop;
+        AudioClip festivalLoop;
         AudioClip chime;
+        AudioClip drum;
         bool building;
         float targetVolume;
 
         public bool Muted { get; private set; }
+
+        /// <summary>
+        /// Festival shows: the loop gains a bronze-drum rhythm (a strong beat on one, a lighter one on the "and" of
+        /// three, as the lasers and fountains pulse) and each new scene is struck on the drum instead of a bell.
+        /// </summary>
+        public bool Festival
+        {
+            get => festival;
+            set
+            {
+                if (festival == value) return;
+                festival = value;
+                AudioClip clip = festival ? festivalLoop : loop;
+                if (clip != null && music.clip != clip)
+                {
+                    bool playing = music.isPlaying;
+                    music.clip = clip;
+                    if (playing) music.Play();
+                }
+            }
+        }
+
+        bool festival;
         public bool Ready => loop != null;
 
         void Awake()
@@ -77,6 +102,12 @@ namespace DroneStar.App
         public void Chime(int index)
         {
             if (chime == null || Muted) return;
+            if (festival && drum != null)
+            {
+                chimes.pitch = 1f;
+                chimes.PlayOneShot(drum, 1f);
+                return;
+            }
             chimes.pitch = Pentatonic[Mathf.Abs(index) % Pentatonic.Length] / Pentatonic[0];
             chimes.PlayOneShot(chime, 0.8f);
         }
@@ -101,9 +132,23 @@ namespace DroneStar.App
             }
             loop = AudioClip.Create("Night of Stars Loop", total, 1, SampleRate, false);
             loop.SetData(data, 0);
-            music.clip = loop;
-            music.clip = loop;
-            music.clip = loop;
+
+            // The festival loop is the same music with the drum rhythm laid over it.
+            var festivalData = (float[])data.Clone();
+            for (int start = 0; start < total; start += chunk)
+            {
+                AddDrumRhythm(festivalData, start, Mathf.Min(total, start + chunk));
+                yield return null;
+            }
+            festivalLoop = AudioClip.Create("Festival Loop", total, 1, SampleRate, false);
+            festivalLoop.SetData(festivalData, 0);
+            music.clip = festival ? festivalLoop : loop;
+
+            int drumLength = SampleRate * 3;
+            var drumData = new float[drumLength];
+            for (int i = 0; i < drumLength; i++) drumData[i] = DrumHit((float)i / SampleRate) * 0.9f;
+            drum = AudioClip.Create("Bronze Drum", drumLength, 1, SampleRate, false);
+            drum.SetData(drumData, 0);
 
             int chimeLength = SampleRate * 2;
             var chimeData = new float[chimeLength];
@@ -150,6 +195,34 @@ namespace DroneStar.App
                 // Gentle loop-point fade avoids a click where the clip wraps.
                 float edge = Mathf.Min(1f, Mathf.Min(t, LoopSeconds - t) * 40f);
                 data[i] = (pad + bell) * edge;
+            }
+        }
+
+        /// <summary>A struck bronze drum: a falling low thump under a cluster of inharmonic bronze partials.</summary>
+        static float DrumHit(float t)
+        {
+            if (t < 0f) return 0f;
+            float attack = Mathf.Min(1f, t * 600f);
+            float pitch = 62f + 40f * Mathf.Exp(-t * 18f);
+            float thump = Mathf.Sin(2f * Mathf.PI * pitch * t) * Mathf.Exp(-t * 5.5f) * 0.8f;
+            float ring = 0f;
+            float[] partials = { 1f, 1.59f, 2.14f, 2.65f, 3.51f };
+            for (int k = 0; k < partials.Length; k++)
+            {
+                ring += Mathf.Sin(2f * Mathf.PI * 176f * partials[k] * t + k) * Mathf.Exp(-t * (1.6f + k * 0.9f)) / (1f + k);
+            }
+            return attack * (thump + ring * 0.35f);
+        }
+
+        static void AddDrumRhythm(float[] data, int from, int to)
+        {
+            const float bar = 2f;
+            for (int i = from; i < to; i++)
+            {
+                float t = (float)i / SampleRate;
+                float inBar = t % bar;
+                // Beat on one, a lighter stroke on the "and" of three (1.5 s), matching FestivalVenue.Beat.
+                data[i] += DrumHit(inBar) * 0.16f + DrumHit(inBar - 1.5f) * 0.09f + DrumHit(inBar + bar - 1.5f) * 0.09f;
             }
         }
 

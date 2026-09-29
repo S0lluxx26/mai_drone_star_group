@@ -21,6 +21,9 @@ namespace DroneStar.Core
 
         /// <summary>Baked colour for model formations (black when the shape has none).</summary>
         public LedColor Art;
+
+        /// <summary>Wing membership for models with wings: 0 = rigid, 1 = left wing, 2 = right wing.</summary>
+        public byte Group;
     }
 
     public sealed class FormationResult
@@ -36,6 +39,10 @@ namespace DroneStar.Core
         public Vector3 Up = Vector3.UnitY;
         public Vector3 Normal = Vector3.UnitZ;
         public float HalfSize = 1f;
+
+        /// <summary>True for a model with wings; <see cref="WingHinge"/> is the right shoulder in local units (Slot.Local).</summary>
+        public bool HasWings;
+        public Vector3 WingHinge;
 
         public int DarkCount => Slots.Length - LitCount;
     }
@@ -58,19 +65,22 @@ namespace DroneStar.Core
             public Vector3 P;
             public float U;
             public LedColor Art;
+            public byte Group;
 
             public Pt(Vector3 p, float u)
             {
                 P = p;
                 U = u;
                 Art = default;
+                Group = 0;
             }
 
-            public Pt(Vector3 p, float u, LedColor art)
+            public Pt(Vector3 p, float u, LedColor art, byte group = 0)
             {
                 P = p;
                 U = u;
                 Art = art;
+                Group = group;
             }
         }
 
@@ -236,12 +246,17 @@ namespace DroneStar.Core
                 Slots = new Slot[droneCount],
                 LitCount = lit.Count,
             };
+            if (spec.Kind == FormationKind.Model && ShapeLibrary.TryGet(spec.Model, out ModelShape winged) && winged.HasWings)
+            {
+                result.HasWings = true;
+                result.WingHinge = winged.Hinge;
+            }
 
             float reach = 0f;
             for (int i = 0; i < lit.Count; i++)
             {
                 Vector3 world = spec.Center + Vector3.Transform(lit[i].P, q);
-                result.Slots[i] = new Slot { Position = world, Local = lit[i].P / half, U = ShowMath.Frac(lit[i].U), Dark = false, Art = lit[i].Art };
+                result.Slots[i] = new Slot { Position = world, Local = lit[i].P / half, U = ShowMath.Frac(lit[i].U), Dark = false, Art = lit[i].Art, Group = lit[i].Group };
                 reach = Math.Max(reach, lit[i].P.Length());
             }
 
@@ -1206,7 +1221,7 @@ namespace DroneStar.Core
             while (true)
             {
                 var candidates = new List<Pt>(take);
-                for (int i = 0; i < take; i++) candidates.Add(new Pt(model.Points[i] * half, (float)i / total, model.Colors[i]));
+                for (int i = 0; i < take; i++) candidates.Add(new Pt(model.Points[i] * half, (float)i / total, model.Colors[i], model.Groups != null ? model.Groups[i] : (byte)0));
                 List<Pt> kept = GreedyThin(candidates, spacing);
                 if (kept.Count >= n || take >= total) return kept.Count > n ? kept.GetRange(0, n) : kept;
                 // Greedy thinning keeps the same leading points however far ahead it looks, so the pool can grow

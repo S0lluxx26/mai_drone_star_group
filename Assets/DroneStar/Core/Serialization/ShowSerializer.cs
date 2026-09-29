@@ -20,7 +20,8 @@ namespace DroneStar.Core
                 .Set("author", doc.Author)
                 .Set("droneCount", doc.DroneCount)
                 .Set("preShowSeconds", doc.PreShowSeconds)
-                .Set("postShowSeconds", doc.PostShowSeconds);
+                .Set("postShowSeconds", doc.PostShowSeconds)
+                .Set("venue", doc.Venue.ToString());
 
             SafetyLimits l = doc.Limits;
             root.Set("limits", JsonValue.NewObject()
@@ -108,6 +109,7 @@ namespace DroneStar.Core
                 DroneCount = root.GetInt("droneCount", 200),
                 PreShowSeconds = root.GetFloat("preShowSeconds", 3f),
                 PostShowSeconds = root.GetFloat("postShowSeconds", 3f),
+                Venue = ReadEnum(root.GetString("venue", nameof(ShowVenue.Lake)), ShowVenue.Lake),
             };
 
             JsonValue limits = root.Get("limits");

@@ -16,8 +16,12 @@ namespace DroneStar.Core
         const int FormationCacheLimit = 64;
         const int PendingAuctionLimit = 4;
 
-        /// <summary>Relative cost tolerance when checking a portable entry against today's geometry.</summary>
-        const double PortableCostTolerance = 1e-6;
+        /// <summary>
+        /// Relative cost tolerance when checking a portable entry against today's geometry. Runtimes round the hold
+        /// motions a hair differently (about 1e-7 of the geometry, coherently across a formation), while a stale
+        /// entry is off by whole percents.
+        /// </summary>
+        const double PortableCostTolerance = 1e-4;
 
         /// <summary>
         /// Up to this many drones the exact Hungarian method is used (the CAPT guarantee holds exactly);

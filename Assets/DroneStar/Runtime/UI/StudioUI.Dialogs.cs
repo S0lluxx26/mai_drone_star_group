@@ -139,6 +139,25 @@ namespace DroneStar.App
             d.Add(DialogButtons(Ui.Button("Close", null, CloseDialog)));
         }
 
+        void ShowDemoPicker()
+        {
+            VisualElement d = OpenDialog("Demo Run", "Watch a built-in demo, or present the show you are editing.");
+            var list = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
+            list.AddToClassList("ds-dialog-list");
+            for (int i = 0; i < 2; i++)
+            {
+                DemoShows.Template t = DemoShows.Templates[i];
+                list.Add(ListItem("Demo " + (i + 1) + " · " + t.Name, t.Description, () => GuardUnsaved("Open a demo", () => app.RunDemo(t))));
+            }
+            list.Add(ListItem("This show · " + app.Session.Document.Title, "Present the show you are editing with titles, captions and camera cuts.", () =>
+            {
+                CloseDialog();
+                StartDemo();
+            }));
+            d.Add(list);
+            d.Add(DialogButtons(Ui.Button("Close", null, CloseDialog)));
+        }
+
         void ShowOpen()
         {
             VisualElement d = OpenDialog("Open show", "Shows saved on " + app.Library.Location + ".");

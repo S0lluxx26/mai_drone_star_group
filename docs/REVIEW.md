@@ -101,3 +101,18 @@ the detail. Beyond the drone count itself:
 | Safety check | At 8,192 drones one time sample costs ~4.5 ms on average but up to ~90 ms in crowded transits, which stalled frames (14–17 fps in the browser while the check ran). A sample's pair checks now run 1,024 drones per step inside the 5 ms budget: 55–60 fps in the browser while checking. |
 | Phones | Measured in Chrome with the CPU throttled 4×: ~15 fps at 8,192 drones (sampling, colouring and uploading every drone each frame). Phones open the flagship at its pre-solved 2,048-drone preset; desktop browsers fly 8,192 at 55–60 fps. |
 | Tests | Flagship tests compile with the shipped baked plans; every preset (1K to 8K) is compiled and safety-checked; runtime-determinism digests cover all 64 preset layouts. |
+
+## Round 4 — 2026-09-30: Demo 2, the Lạc bird festival
+
+What the safety check and the tests caught while building the second demo, and what was done about it:
+
+| Finding | Fix |
+|---|---|
+| A 22° wingbeat at 0.3 Hz moved the Lạc bird's wing tips at 30–60 m/s (limit 12): at show scale the tips are 80–170 m from the shoulder. | Slow, grand beats (10° at 0.065 Hz for the 2,048 design, slower still at 8,192); the finale rises instead of beating. |
+| An amplitude envelope borrowed from the wave motion added 7 m/s² on 175 m wings. | Removed: the beat starts at rest and the motion clock already eases it. |
+| The bird held only 5,611 drones at the largest size; the drum face fell short at 4K and 8K. | Four stacked sheets for the bird, two for the drum face: from the front they read as one drawing, and every scene now lights every drone at 1K–8K. |
+| Parked (unlit) drones behind an oversized shape flew outside the geofence. | Gone once every drone has a place in the shape; the presets are now all fully lit. |
+| Draw_in_3D redrew two models upstream (five balloons, an escorted liner), which silently shrank two flagship scenes by 40 %. | The exporter reads Draw_in_3D at a pinned commit; moving the pin is a deliberate change. |
+| The default UI font had no Vietnamese letters (Lạc, Đông Sơn). | Be Vietnam Pro (SIL OFL) for the whole interface. |
+| Inside Unity, six baked Demo 2 transitions (1K and 4K presets) were re-solved. The fleet scaler computed the drum's and the sun's height as `size * 0.6f + hover` in float; Mono keeps that intermediate at double precision, so it landed one bit away from .NET's, and the recipe keys (which hash the specs bit-exactly) no longer matched the bake. | The scaler evaluates its compound expressions in double and rounds once, so every runtime produces the same bits; a Mono build of the core now hits all 32 baked Demo 2 transitions, and the WebGL build plans both demos entirely from the bake. |
+| The baked-plan cost check (1e-6) left little room over the way runtimes round the hold motions (up to 2e-7, coherently across a formation). | Tolerance 1e-4: runtime rounding passes, a stale bake (off by whole percents) is still re-solved. |

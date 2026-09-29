@@ -2,7 +2,8 @@
 
 **Design, check and present drone light shows — built in Unity 6 for the Mai Drone Star Group.**
 
-[**▶ Watch the demo run in your browser**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=1) ·
+[**▶ Demo 1: A Night of Stars**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=1) ·
+[**▶ Demo 2: Rise of the Lạc Bird**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=2) ·
 [Open the studio](https://s0lluxx26.github.io/mai_drone_star_group/)
 
 !["MAI" written by 8,192 drones in A Night of Stars, the flagship demo](docs/media/hero.png)
@@ -12,7 +13,11 @@ full-colour 3D models, colour them, give them motion, and the studio plans every
 whole show for safety, and plays it back over a dark blue night lake with reflections, light trails, a 3D
 city skyline and a generated soundtrack. Every drone is a detailed quadcopter with a glowing LED bulb
 underneath; fly the close-up camera beside one to watch its props spin as it leans into each move.
-Press **Demo Run** to watch the show as a cinematic presentation with titles, scene captions and camera cuts.
+Press **Demo Run** to watch a demo, or your own show, as a cinematic presentation with titles, scene captions
+and camera cuts. The second demo, *Rise of the Lạc Bird*, is a Đông Sơn festival: a golden Lạc bird of 8,192 drones
+beats its wings above a bronze-drum stage, with fountains, an arched water screen, mist and lasers that follow the show.
+
+![Rise of the Lạc Bird: the Lạc bird above the bronze-drum festival stage, with fountains and lasers](docs/media/festival.png)
 
 | Editing a show | The demo run | Safety check |
 |---|---|---|
@@ -29,9 +34,10 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
   a shape of a given size holds a fixed number of them: a bigger fleet draws bigger shapes in finer detail,
   and the cameras frame them accordingly. Phones open the flagship at 2,048 drones (the same show, a
   quarter of the per-frame work); 8K is one tap away in the Show tab.
-- **12 full-colour 3D models** — robot, fish, butterfly, hot-air balloon, Eiffel Tower, ocean liner,
+- **14 full-colour 3D models** — robot, fish, butterfly, hot-air balloon, Eiffel Tower, ocean liner,
   whale, firework star, row of fire, birthday cake, starship launch and a greeting banner, ported from
-  the [Draw_in_3D](https://github.com/S0lluxx26/Draw_in_3D) drone show. Each keeps its own colours (the *Model
+  the [Draw_in_3D](https://github.com/S0lluxx26/Draw_in_3D) drone show, plus the studio's own Lạc bird (with wings
+  that beat) and the face of a Đông Sơn bronze drum. Each keeps its own colours (the *Model
   colours* effect), draws the whole model at any fleet size, and is sized for your fleet when you add it.
   **Enlarge to light all** grows any shape until no drone is left parked.
 - **12 formation families** — grid curtain, ring, sphere, star, heart, helix, spiral galaxy, wave, cube,
@@ -41,7 +47,11 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
   import `x,y[,z]` points from a CSV file.
 - **10 light effects** — solid, gradient, rainbow, chase, twinkle, pulse, radial, fire, model colours,
   off — from a vivid palette or any hex colour, with tempo and brightness.
-- **Motion while holding** — turntable, roll, breathe, wave and rise, eased in and out so drones never jerk.
+- **Motion while holding** — turntable, roll, breathe, wave, rise and wingbeat (the Lạc bird's wings swing about
+  its shoulders), eased in and out so drones never jerk.
+- **Two venues** — the night lake, or the festival stage: a bronze drum on a sun-star platform with boat-shaped
+  wings, fountains, mist and lasers, all choreographed from the show's timing and colours (the flight plan is the
+  same either way).
 - **Automatic flight planning** — every change is re-planned in the background: shortest legal
   transition times, optimal drone-to-slot matching and parking of surplus drones.
 - **Safety check** — the whole show is flown in simulation: closest approach between every pair of
@@ -83,7 +93,8 @@ Press **Demo Run** to watch the show as a cinematic presentation with titles, sc
 The flagship demo, *A Night of Stars* (8,192 drones, 16 scenes, 9 min 9 s), passes with a closest pass
 of 1.27 m against a 1.2 m limit, a top speed of 11.1 m/s against 12 m/s and peak acceleration of
 4.8 m/s² against 5 m/s²; every smaller preset passes too (2,048 drones: 5 min 53 s, closest pass 1.28 m).
-The original 360-drone show is still there as the *Classic Night* template.
+Demo 2 (8,192 drones, 7 scenes, 5 min 12 s) passes with a closest pass of 1.27 m and peak acceleration of
+4.0 m/s². The original 360-drone show is still there as the *Classic Night* template.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and [docs/REVIEW.md](docs/REVIEW.md) for
 the review log.
 
@@ -123,7 +134,7 @@ Assets/DroneStar/
   UI/          Studio.uss stylesheet and theme
 Assets/WebGLTemplates/DroneStar/   Branded web loader
 tests/         dotnet projects that compile Core and its tests outside Unity
-tools/         export-shape-pack.mjs (models from Draw_in_3D), publish-pages.ps1
+tools/         export-shape-pack.mjs (models from a pinned Draw_in_3D commit + studio-models.mjs), publish-pages.ps1
 docs/          Architecture notes and screenshots
 ```
 
@@ -174,4 +185,5 @@ unknown fields are ignored.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). The UI font, [Be Vietnam Pro](https://github.com/bettergui/BeVietnamPro), is under the
+SIL Open Font License (`Assets/DroneStar/UI/Fonts/OFL.txt`).

@@ -77,6 +77,22 @@ namespace DroneStar.Tests
         }
 
         [Test]
+        public void VenueRoundTripsAndDefaultsToTheLake()
+        {
+            ShowDocument doc = DemoShows.Blank();
+            Assert.That(doc.Venue, Is.EqualTo(ShowVenue.Lake));
+            doc.Venue = ShowVenue.Festival;
+            Assert.That(ShowSerializer.FromJson(ShowSerializer.ToJson(doc)).Venue, Is.EqualTo(ShowVenue.Festival));
+            string old = "{\"format\":\"dronestar-show\",\"version\":1,\"cues\":[]}";
+            Assert.That(ShowSerializer.FromJson(old).Venue, Is.EqualTo(ShowVenue.Lake), "files from before venues open on the lake");
+            string odd = "{\"format\":\"dronestar-show\",\"version\":1,\"venue\":\"Moon\",\"cues\":[]}";
+            Assert.That(ShowSerializer.FromJson(odd).Venue, Is.EqualTo(ShowVenue.Lake));
+            var flap = new Cue { Motion = new MotionSpec { Kind = MotionKind.Flap, Amount = 500f } };
+            ShowSanitizer.SanitizeCue(flap);
+            Assert.That(flap.Motion.Amount, Is.EqualTo(ShowBounds.MaxFlapDegrees));
+        }
+
+        [Test]
         public void CustomPointsRoundTrip()
         {
             ShowDocument doc = DemoShows.Blank();

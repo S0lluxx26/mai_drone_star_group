@@ -16,6 +16,7 @@ namespace DroneStar.Core
             doc.Title = CleanText(doc.Title, 64, "Untitled Show");
             doc.Author = CleanText(doc.Author, 64, "");
             doc.DroneCount = ShowMath.Clamp(doc.DroneCount, ShowBounds.MinDrones, ShowBounds.MaxDrones);
+            if (!Enum.IsDefined(typeof(ShowVenue), doc.Venue)) doc.Venue = ShowVenue.Lake;
             doc.PreShowSeconds = Finite(doc.PreShowSeconds, 0f, 30f, 3f);
             doc.PostShowSeconds = Finite(doc.PostShowSeconds, 0f, 30f, 3f);
 
@@ -89,7 +90,8 @@ namespace DroneStar.Core
             if (!Enum.IsDefined(typeof(MotionKind), m.Kind)) m.Kind = MotionKind.None;
             m.DegreesPerSecond = Finite(m.DegreesPerSecond, -ShowBounds.MaxSpin, ShowBounds.MaxSpin, 12f);
             m.FrequencyHz = Finite(m.FrequencyHz, 0f, ShowBounds.MaxFrequency, 0.25f);
-            float maxAmount = m.Kind == MotionKind.Breathe ? 0.5f : m.Kind == MotionKind.Wave ? 12f : ShowBounds.MaxMotionAmount;
+            float maxAmount = m.Kind == MotionKind.Breathe ? 0.5f : m.Kind == MotionKind.Wave ? 12f
+                : m.Kind == MotionKind.Flap ? ShowBounds.MaxFlapDegrees : ShowBounds.MaxMotionAmount;
             m.Amount = Finite(m.Amount, 0f, maxAmount, 0.15f);
         }
 

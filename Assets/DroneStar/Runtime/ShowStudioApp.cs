@@ -32,6 +32,7 @@ namespace DroneStar.App
         [SerializeField] DemoDirector demo;
         [SerializeField] AmbientScore score;
         [SerializeField] WebBridge bridge;
+        [SerializeField] FestivalVenue festival;
         [SerializeField, Range(0.5f, 3f)] float ledIntensity = 1f;
         [Tooltip("The model shape pack (Data/ShapePack.bytes, exported from Draw_in_3D by tools/export-shape-pack.mjs).")]
         [SerializeField] TextAsset shapePack;
@@ -98,9 +99,9 @@ namespace DroneStar.App
             Library = new ShowLibrary();
             LoadBundledData();
             if (swarm != null && (WebBridge.IsWeb || Application.isMobilePlatform)) swarm.DetailedCapacity = 128;
-            ShowDocument flagship = DemoShows.StarGroupNight();
-            if (Application.isMobilePlatform) ShowScaler.ResizeForDroneCount(flagship, PhoneFleet);
-            Session = new ShowEditSession(flagship);
+            requestedDemo = RequestedDemo();
+            ShowDocument first = ForThisDevice(requestedDemo == 2 ? DemoShows.LacBirdFestival() : DemoShows.StarGroupNight());
+            Session = new ShowEditSession(first);
             Session.Changed += OnDocumentChanged;
             if (demo != null) demo.Initialize(this, cameraRig, score);
             if (cameraRig != null)
@@ -114,7 +115,25 @@ namespace DroneStar.App
         void Start()
         {
             if (ui != null) ui.Bind(this);
-            if (WantsAutoDemo()) StartCoroutine(BeginDemoWhenReady());
+            if (requestedDemo > 0) StartCoroutine(BeginDemoWhenReady());
+        }
+
+        int requestedDemo;
+
+        /// <summary>Phones get the demos at <see cref="PhoneFleet"/> drones (the same show at its 2K preset).</summary>
+        static ShowDocument ForThisDevice(ShowDocument doc)
+        {
+            if (Application.isMobilePlatform && doc.DroneCount > PhoneFleet) ShowScaler.ResizeForDroneCount(doc, PhoneFleet);
+            return doc;
+        }
+
+        /// <summary>Plays a built-in demo: opens its template and starts the presentation once it is planned.</summary>
+        public void RunDemo(DemoShows.Template template)
+        {
+            if (template == null) return;
+            if (demo != null && demo.IsRunning) demo.End();
+            NewFromTemplate(template);
+            StartCoroutine(BeginDemoWhenReady());
         }
 
         /// <summary>Registers the model shapes and the pre-solved demo transitions before the first compile.</summary>
@@ -136,14 +155,20 @@ namespace DroneStar.App
             }
         }
 
-        static bool WantsAutoDemo()
+        /// <summary>
+        /// Which demo to start with: 0 none, 1 the flagship, 2 the Lạc bird festival. From "-demo [2]" on the
+        /// command line or "?demo=1" / "?demo=2" (or "#demo") in the page address.
+        /// </summary>
+        static int RequestedDemo()
         {
-            foreach (string arg in Environment.GetCommandLineArgs())
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; i++)
             {
-                if (arg == "-demo") return true;
+                if (args[i] == "-demo") return i + 1 < args.Length && args[i + 1] == "2" ? 2 : 1;
             }
             string url = Application.absoluteURL ?? "";
-            return url.Contains("demo=1") || url.Contains("#demo");
+            if (url.Contains("demo=2")) return 2;
+            return url.Contains("demo=1") || url.Contains("#demo") ? 1 : 0;
         }
 
         System.Collections.IEnumerator BeginDemoWhenReady()
@@ -177,6 +202,7 @@ namespace DroneStar.App
             {
                 Clock.Tick(dt, Show.Duration);
                 RenderFrame();
+                if (festival != null && festival.Visible) festival.Tick(Show, Clock.Time, cameraRig != null ? cameraRig.GetComponent<Camera>() : Camera.main);
             }
         }
 
@@ -227,6 +253,7 @@ namespace DroneStar.App
             Clock.Seek(Clock.Time, Show.Duration);
             Vector3[] pads = ToUnity(Show.PadPositions);
             if (environment != null) environment.SetPads(pads);
+            if (festival != null) festival.SetVisible(Show.Document.Venue == ShowVenue.Festival);
             if (swarm != null) swarm.SetPads(pads);
             if (cameraRig != null && Show.CueTimings.Count > 0)
             {
@@ -497,7 +524,7 @@ namespace DroneStar.App
         {
             if (demo != null && demo.IsRunning) demo.End();
             StopCloseUp();
-            Session.Load(template.Create(), markSaved: true);
+            Session.Load(ForThisDevice(template.Create()), markSaved: true);
             Clock.Pause();
             Clock.Seek(0f, float.MaxValue);
             Select(0, seek: false);

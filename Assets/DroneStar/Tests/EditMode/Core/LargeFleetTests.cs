@@ -10,10 +10,10 @@ namespace DroneStar.Tests
     public class LargeFleetTests
     {
         [Test]
-        public void ShapePackHasTheTwelveModels()
+        public void ShapePackHasTheModels()
         {
             IReadOnlyList<ModelShape> shapes = ShapeLibrary.Shapes;
-            Assert.That(shapes.Count, Is.EqualTo(12));
+            Assert.That(shapes.Count, Is.EqualTo(14), "twelve from Draw_in_3D, the Lạc bird and the bronze drum");
             foreach (ModelShape m in shapes)
             {
                 Assert.That(m.Points.Length, Is.EqualTo(3 * ShowBounds.MaxDrones), m.Name + ": a deep pool, three times the largest fleet");
@@ -23,6 +23,64 @@ namespace DroneStar.Tests
                 Assert.That(extent, Is.EqualTo(1f).Within(0.01f), m.Name + " is normalised");
             }
             Assert.That(ShapeLibrary.TryGet("eiffel tower", out _), Is.True, "lookup ignores case");
+        }
+
+        [Test]
+        public void LacBirdHasWingsThatBeatRigidly()
+        {
+            Assert.That(ShapeLibrary.TryGet("Lac bird", out ModelShape bird), Is.True);
+            Assert.That(bird.HasWings, Is.True);
+            Assert.That(ShapeLibrary.TryGet("Bronze drum", out ModelShape drum) && !drum.HasWings, Is.True);
+            int left = 0, right = 0;
+            foreach (byte g in bird.Groups)
+            {
+                if (g == 1) left++;
+                if (g == 2) right++;
+            }
+            Assert.That(left, Is.GreaterThan(bird.Points.Length / 5));
+            Assert.That(right, Is.EqualTo(left).Within(left / 20), "the wings mirror each other");
+
+            var spec = new FormationSpec { Kind = FormationKind.Model, Model = "Lac bird", Size = 200f, Center = new Vector3(0, 120, 0) };
+            FormationResult f = FormationGenerator.Generate(spec, 1500, 1.7f);
+            Assert.That(f.HasWings, Is.True);
+            var flap = new MotionSpec { Kind = MotionKind.Flap, Amount = 20f, FrequencyHz = 0.1f };
+            float hold = 20f, t = 6f;
+            int wing = -1, wing2 = -1, body = -1;
+            float rightTip = float.MinValue;
+            for (int i = 0; i < f.Slots.Length; i++)
+            {
+                Slot s = f.Slots[i];
+                if (s.Dark) continue;
+                if (s.Group == 0 && body < 0) body = i;
+                if (s.Group == 2)
+                {
+                    if (wing < 0) wing = i;
+                    else if (wing2 < 0) wing2 = i;
+                    if (s.Local.X > rightTip) rightTip = s.Local.X;
+                }
+            }
+            Slot a = f.Slots[wing], b = f.Slots[wing2], c = f.Slots[body];
+            Vector3 a1 = HoldMotion.Evaluate(flap, f, a, t, hold), b1 = HoldMotion.Evaluate(flap, f, b, t, hold);
+            Assert.That(Vector3.Distance(a1, a.Position), Is.GreaterThan(0.5f), "the wing moves");
+            Assert.That(Vector3.Distance(a1, b1), Is.EqualTo(Vector3.Distance(a.Position, b.Position)).Within(1e-3f), "rigidly");
+            Assert.That(HoldMotion.Evaluate(flap, f, c, t, hold), Is.EqualTo(c.Position), "the body holds still");
+            Assert.That(HoldMotion.Evaluate(flap, f, a, 0f, hold), Is.EqualTo(a.Position), "it starts at rest");
+            Assert.That(HoldMotion.PeakSpeed(flap, f, hold), Is.GreaterThan(1f));
+
+            // Both tips rise together: mirror images stay mirror images.
+            int l = -1, r = -1;
+            for (int i = 0; i < f.Slots.Length && (l < 0 || r < 0); i++)
+            {
+                if (f.Slots[i].Dark) continue;
+                if (f.Slots[i].Group == 1 && f.Slots[i].Local.X < -0.8f && l < 0) l = i;
+                if (f.Slots[i].Group == 2 && f.Slots[i].Local.X > 0.8f && r < 0) r = i;
+            }
+            float riseL = HoldMotion.Evaluate(flap, f, f.Slots[l], t, hold).Y - f.Slots[l].Position.Y;
+            float riseR = HoldMotion.Evaluate(flap, f, f.Slots[r], t, hold).Y - f.Slots[r].Position.Y;
+            Assert.That(Math.Sign(riseL), Is.EqualTo(Math.Sign(riseR)), "both wings beat the same way");
+
+            var sphere = FormationGenerator.Generate(new FormationSpec { Kind = FormationKind.Sphere, Size = 60f }, 200, 2f);
+            Assert.That(HoldMotion.Evaluate(flap, sphere, sphere.Slots[3], t, hold), Is.EqualTo(sphere.Slots[3].Position), "shapes without wings hold still");
         }
 
         [Test]

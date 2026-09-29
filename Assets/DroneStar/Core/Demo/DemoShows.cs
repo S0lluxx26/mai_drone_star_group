@@ -36,6 +36,7 @@ namespace DroneStar.Core
         public static readonly IReadOnlyList<Template> Templates = new[]
         {
             new Template { Name = "A Night of Stars", Description = "The 8,192-drone flagship: sixteen scenes with full-colour 3D models (robot, whale, Eiffel Tower, starship...) and a starburst finale. The Show tab's fleet presets fly it with fewer drones.", Create = StarGroupNight },
+            new Template { Name = "Rise of the Lạc Bird", Description = "Demo 2: 8,192 drones over a Đông Sơn festival stage. A golden Lạc bird beats its wings above the bronze drum, with fountains, mist and lasers.", Create = LacBirdFestival },
             new Template { Name = "Classic Night", Description = "The original 360-drone show: light enough for any device.", Create = ClassicNight },
             new Template { Name = "Heart & Rings", Description = "A short 200-drone wedding piece.", Create = HeartAndRings },
             new Template { Name = "Blank Show", Description = "One formation to start from.", Create = Blank },
@@ -120,6 +121,58 @@ namespace DroneStar.Core
             return doc;
         }
 
+        /// <summary>
+        /// Demo 2, "Rise of the Lạc Bird": a Đông Sơn festival. The bronze drum's face, its fourteen-ray sun, the
+        /// river, a lotus, and the Lạc bird of the drums beating its wings above a festival stage with fountains and
+        /// lasers. Designed at 2048 drones and grown to the flagship's fleet like the first demo.
+        /// </summary>
+        public static ShowDocument LacBirdFestival()
+        {
+            ShowDocument doc = LacBirdFestivalDesign();
+            ShowScaler.ResizeForDroneCount(doc, FlagshipDrones);
+            return doc;
+        }
+
+        static ShowDocument LacBirdFestivalDesign()
+        {
+            var doc = new ShowDocument
+            {
+                Title = "Rise of the Lạc Bird",
+                Author = "Mai Drone Star Group",
+                DroneCount = 2048,
+                Venue = ShowVenue.Festival,
+            };
+            doc.Limits.MinSeparation = 1.2f;
+            doc.Limits.MaxSpeed = 12f;
+            doc.Limits.MaxAcceleration = 5f;
+            doc.Limits.MaxAltitude = 220f;
+            doc.Limits.GeofenceRadius = 260f;
+            doc.Pad.Spacing = 2f;
+            float a = GrandAltitude;
+            doc.Cues.Add(ModelCue("Drum of Đông Sơn", "Bronze drum", 150f, a,
+                new MotionSpec { Kind = MotionKind.Roll, DegreesPerSecond = 6f }, hold: 10f));
+            doc.Cues.Add(MakeCue("Sun of the Drum", FormationKind.Star, 150f, points: 14, layers: 2, altitude: a,
+                light: Light(LightEffect.Radial, WarmWhite, Amber),
+                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.08f, FrequencyHz = 0.2f }, hold: 8f));
+            doc.Cues.Add(MakeCue("River of Waves", FormationKind.Wave, 170f, altitude: a,
+                light: Light(LightEffect.Gradient, Cyan, Blue),
+                motion: new MotionSpec { Kind = MotionKind.Wave, Amount = 2.5f, FrequencyHz = 0.16f }, hold: 8f));
+            doc.Cues.Add(MakeCue("Lotus in Bloom", FormationKind.Flower, 140f, points: 8, altitude: a,
+                light: Light(LightEffect.Gradient, Pink, WarmWhite),
+                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.1f, FrequencyHz = 0.18f }, hold: 8f));
+            // Wing tips sit tens of metres from the shoulder, so a bird this size beats its wings slowly (within the
+            // speed and acceleration limits); bigger fleets slow it further.
+            doc.Cues.Add(ModelCue("Rise of the Lạc Bird", "Lac bird", 180f, a,
+                new MotionSpec { Kind = MotionKind.Flap, Amount = 10f, FrequencyHz = 0.065f }, hold: 16f));
+            doc.Cues.Add(MakeCue("Heart of the Festival", FormationKind.Heart, 110f, altitude: a,
+                light: Light(LightEffect.Pulse, Crimson, Gold),
+                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.08f, FrequencyHz = 0.2f }, hold: 8f));
+            doc.Cues.Add(ModelCue("The Lạc Bird Soars", "Lac bird", 180f, a,
+                new MotionSpec { Kind = MotionKind.Rise, Amount = 25f }, hold: 12f, speed: 1.6f));
+            ShowSanitizer.Sanitize(doc);
+            return doc;
+        }
+
         /// <summary>The original 360-drone show (every shape parametric, light enough for any device).</summary>
         public static ShowDocument ClassicNight()
         {
@@ -191,17 +244,20 @@ namespace DroneStar.Core
         }
 
         /// <summary>
-        /// The shows whose large-fleet transitions ship pre-solved in DemoAssignments.bytes: the flagship at
-        /// every fleet preset that needs the auction solver, resized exactly as the editor's fleet presets do.
+        /// The shows whose large-fleet transitions ship pre-solved in DemoAssignments.bytes: both demos at every
+        /// fleet preset that needs the auction solver, resized exactly as the editor's fleet presets do.
         /// </summary>
         public static IEnumerable<ShowDocument> PresolvedShows()
         {
-            foreach (int size in ShowBounds.FleetSizes)
+            foreach (Func<ShowDocument> demo in new Func<ShowDocument>[] { StarGroupNight, LacBirdFestival })
             {
-                if (size <= ShowCompiler.ExactAssignmentLimit) continue;
-                ShowDocument doc = StarGroupNight();
-                if (doc.DroneCount != size) ShowScaler.ResizeForDroneCount(doc, size);
-                yield return doc;
+                foreach (int size in ShowBounds.FleetSizes)
+                {
+                    if (size <= ShowCompiler.ExactAssignmentLimit) continue;
+                    ShowDocument doc = demo();
+                    if (doc.DroneCount != size) ShowScaler.ResizeForDroneCount(doc, size);
+                    yield return doc;
+                }
             }
         }
 

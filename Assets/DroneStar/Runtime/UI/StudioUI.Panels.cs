@@ -79,7 +79,7 @@ namespace DroneStar.App
             bar.Add(soundButton);
             bar.Add(Ui.Button(null, Icon.Help, ShowHelp, null, "Shortcuts and about (H)"));
             bar.Add(Ui.El("ds-divider"));
-            bar.Add(Ui.Button("Demo Run", Icon.Film, StartDemo, "ds-btn--primary", "Play the show as a cinematic presentation (D)"));
+            bar.Add(Ui.Button("Demo Run", Icon.Film, ShowDemoPicker, "ds-btn--primary", "Watch a demo, or play this show as a cinematic presentation (D)"));
             return bar;
         }
 

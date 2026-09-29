@@ -18,6 +18,17 @@ namespace DroneStar.Core
 
         /// <summary>Bounding-box extents divided by the largest one (1 on the model's longest axis).</summary>
         public Vector3 Proportions = Vector3.One;
+
+        /// <summary>
+        /// Per point: 0 = rigid, 1 = left wing, 2 = right wing; null for models without wings. Wings swing about
+        /// <see cref="Hinge"/> (the right shoulder, in the same normalised units as <see cref="Points"/>; the left
+        /// shoulder mirrors it) under the Flap motion.
+        /// </summary>
+        public byte[] Groups;
+
+        public Vector3 Hinge;
+
+        public bool HasWings => Groups != null;
     }
 
     /// <summary>
@@ -101,7 +112,7 @@ namespace DroneStar.Core
             var reader = new PackReader(data);
             if (reader.Ascii(4) != "DSSP") throw new FormatException("Not a Drone Star shape pack.");
             int version = reader.U16();
-            if (version != 1) throw new FormatException("Unsupported shape pack version " + version + ".");
+            if (version != 1 && version != 2) throw new FormatException("Unsupported shape pack version " + version + ".");
             int count = reader.U16();
             var result = new List<ModelShape>(count);
             for (int s = 0; s < count; s++)
@@ -112,6 +123,10 @@ namespace DroneStar.Core
                 var min = new Vector3(reader.F32(), reader.F32(), reader.F32());
                 var max = new Vector3(reader.F32(), reader.F32(), reader.F32());
                 if (!ShowMath.IsFinite(min) || !ShowMath.IsFinite(max)) throw new FormatException("Bad bounds in " + name + ".");
+                // Version 2: a flags byte; bit 0 = the model has wings (a hinge here, a group byte per point below).
+                bool wings = version >= 2 && (reader.U8() & 1) != 0;
+                Vector3 hinge = wings ? new Vector3(reader.F32(), reader.F32(), reader.F32()) : Vector3.Zero;
+                if (!ShowMath.IsFinite(hinge)) throw new FormatException("Bad hinge in " + name + ".");
                 Vector3 span = max - min;
                 var raw = new Vector3[n];
                 for (int i = 0; i < n; i++)
@@ -123,6 +138,16 @@ namespace DroneStar.Core
                 }
                 var colors = new LedColor[n];
                 for (int i = 0; i < n; i++) colors[i] = new LedColor(reader.U8() / 255f, reader.U8() / 255f, reader.U8() / 255f);
+                byte[] groups = null;
+                if (wings)
+                {
+                    groups = new byte[n];
+                    for (int i = 0; i < n; i++)
+                    {
+                        groups[i] = (byte)reader.U8();
+                        if (groups[i] > 2) throw new FormatException("Bad wing group in " + name + ".");
+                    }
+                }
 
                 Vector3 center = (min + max) * 0.5f;
                 float largest = Math.Max(span.X, Math.Max(span.Y, span.Z));
@@ -135,6 +160,8 @@ namespace DroneStar.Core
                     Points = points,
                     Colors = colors,
                     Proportions = largest > 1e-6f ? span / largest : Vector3.One,
+                    Groups = groups,
+                    Hinge = (hinge - center) * scale,
                 });
             }
             if (!reader.AtEnd) throw new FormatException("Trailing bytes in shape pack.");

@@ -12,8 +12,9 @@ namespace DroneStar.Tests
             ShowCompiler compiler = TestData.BakedCompiler();
             foreach (DemoShows.Template template in DemoShows.Templates)
             {
-                // The flagship is checked at every fleet size by BakedDemoTests.EveryPresolvedFleetLightsEveryDroneAndFliesSafely.
-                if (template.Create.Method.Name == nameof(DemoShows.StarGroupNight)) continue;
+                // Both demos are checked at every fleet size by BakedDemoTests.EveryPresolvedFleetLightsEveryDroneAndFliesSafely.
+                string method = template.Create.Method.Name;
+                if (method == nameof(DemoShows.StarGroupNight) || method == nameof(DemoShows.LacBirdFestival)) continue;
                 ShowDocument doc = template.Create();
                 CompiledShow show = compiler.Compile(doc);
                 ValidationReport report = SafetyValidator.Run(show, TestData.ValidationStep(doc.DroneCount));
@@ -40,6 +41,23 @@ namespace DroneStar.Tests
             Assert.That(show.DroneCount, Is.EqualTo(8192), "four times the original 2,048-drone flagship");
             Assert.That(show.Duration, Is.InRange(200f, 900f));
             Assert.That(compiler.CacheMisses, Is.EqualTo(0), "the flagship ships fully pre-solved");
+        }
+
+        [Test]
+        public void LacBirdFestivalIsTheSecondDemo()
+        {
+            ShowDocument doc = DemoShows.LacBirdFestival();
+            Assert.That(doc.Venue, Is.EqualTo(ShowVenue.Festival));
+            Assert.That(doc.DroneCount, Is.EqualTo(DemoShows.FlagshipDrones));
+            Assert.That(doc.Cues.Exists(c => c.Formation.Kind == FormationKind.Model && c.Formation.Model == "Lac bird" && c.Motion.Kind == MotionKind.Flap));
+            Assert.That(DemoShows.Templates[1].Create().Title, Is.EqualTo(doc.Title));
+            ShowCompiler compiler = TestData.BakedCompiler();
+            CompiledShow show = compiler.Compile(doc);
+            foreach (CueTiming t in show.CueTimings)
+            {
+                Assert.That(t.Formation.LitCount, Is.EqualTo(show.DroneCount), show.Document.Cues[t.CueIndex].Name);
+            }
+            Assert.That(compiler.CacheMisses, Is.EqualTo(0), "Demo 2 ships fully pre-solved");
         }
 
         [Test]

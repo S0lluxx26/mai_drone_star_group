@@ -9,22 +9,37 @@
 // small part of the pool), keeping the
 // "every prefix is evenly spread" property.
 //
+// The studio's own procedural models (tools/studio-models.mjs: the Lạc bird, the bronze drum face) follow.
+//
+// The Draw_in_3D models are read at a pinned commit (SOURCE_COMMIT), not the working tree, so the pack (and every
+// baked assignment keyed by its checksum) only changes when that pin is moved on purpose.
+//
 // usage: node tools/export-shape-pack.mjs [path/to/Draw_in_3D]
 //
 // Pack format (little-endian):
-//   "DSSP" | u16 version=1 | u16 shapeCount
-//   per shape: u8 nameLength | name (UTF-8) | u16 pointCount | f32 min[3] | f32 max[3]
+//   "DSSP" | u16 version=2 | u16 shapeCount
+//   per shape: u8 nameLength | name (UTF-8) | u16 pointCount | f32 min[3] | f32 max[3] | u8 flags
+//              | [flags & 1: f32 hinge[3], the right wing's shoulder]
 //              | i16 positions[pointCount*3] | u8 colours[pointCount*3]
+//              | [flags & 1: u8 group[pointCount], 0 = rigid, 1 = left wing, 2 = right wing]
 // Positions are in the studio's axes (x right, y up, z away from the audience), so z is flipped from
 // Draw_in_3D's right-handed "z toward the audience" convention. Colours are sRGB LED colours with
 // Draw_in_3D's baked audience shading.
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, mkdtempSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { STUDIO_MODELS } from "./studio-models.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const source = resolve(process.argv[2] || join(here, "..", "..", "Draw_in_3D"));
-const assets = (await import(pathToFileURL(join(source, "web", "src", "formation-assets.js")).href)).default;
+// Draw_in_3D "Studio 22" (26 Sep 2026): the models the flagship's scenes are sized for. Later versions redraw
+// some of them (five balloons, an escorted liner), which would need the flagship re-tuned.
+const SOURCE_COMMIT = "6727070";
+const pinned = join(mkdtempSync(join(tmpdir(), "shape-pack-")), "formation-assets.mjs");
+writeFileSync(pinned, execFileSync("git", ["-C", source, "show", `${SOURCE_COMMIT}:web/src/formation-assets.js`], { maxBuffer: 1 << 28 }));
+const assets = (await import(pathToFileURL(pinned).href)).default;
 
 const POINTS = +(process.env.POINTS || 24576);
 
@@ -70,7 +85,7 @@ function nearestNeighbours(X, n, K) {
 
 // One round: add the midpoint of every near pair (never across gaps between separate parts).
 function densifyRound(set) {
-  const { X, C, n } = set, K = 8;
+  const { X, C, G, n } = set, K = 8;
   const { idx, dist } = nearestNeighbours(X, n, K);
   const nearest = new Float64Array(n);
   for (let i = 0; i < n; i++) nearest[i] = dist[i * K];
@@ -79,7 +94,7 @@ function densifyRound(set) {
   for (let i = 0; i < n; i++) {
     for (let k = 0; k < K; k++) {
       const j = idx[i * K + k];
-      if (j < 0 || dist[i * K + k] > limit) continue;
+      if (j < 0 || dist[i * K + k] > limit || G[i] !== G[j]) continue;
       const key = Math.min(i, j) * n + Math.max(i, j);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -87,23 +102,25 @@ function densifyRound(set) {
     }
   }
   const m = mids.length / 2, N = n + m;
-  const X2 = new Float64Array(3 * N), C2 = new Float64Array(3 * N);
-  X2.set(X); C2.set(C);
+  const X2 = new Float64Array(3 * N), C2 = new Float64Array(3 * N), G2 = new Uint8Array(N);
+  X2.set(X); C2.set(C); G2.set(G);
   for (let q = 0; q < m; q++) {
     const i = mids[2 * q], j = mids[2 * q + 1];
     for (let k = 0; k < 3; k++) {
       X2[3 * (n + q) + k] = (X[3 * i + k] + X[3 * j + k]) / 2;
       C2[3 * (n + q) + k] = (C[3 * i + k] + C[3 * j + k]) / 2;
     }
+    G2[n + q] = G[i];
   }
-  return { X: X2, C: C2, n: N };
+  return { X: X2, C: C2, G: G2, n: N };
 }
 
 function densify(points) {
-  let set = { X: Float64Array.from(points.flatMap((q) => q.p)), C: Float64Array.from(points.flatMap((q) => q.c)), n: points.length };
+  let set = { X: Float64Array.from(points.flatMap((q) => q.p)), C: Float64Array.from(points.flatMap((q) => q.c)),
+    G: Uint8Array.from(points.map((q) => q.g || 0)), n: points.length };
   while (set.n < POINTS * 1.3) set = densifyRound(set);
   // Farthest-point order over the pool, starting from the model's own first point.
-  const { X, C, n } = set, order = [0];
+  const { X, C, G, n } = set, order = [0];
   const gap = new Float64Array(n).fill(Infinity);
   let last = 0;
   while (order.length < Math.min(POINTS, n)) {
@@ -118,30 +135,35 @@ function densify(points) {
     order.push(far);
     last = far;
   }
-  return order.map((i) => ({ p: [X[3 * i], X[3 * i + 1], X[3 * i + 2]], c: [C[3 * i], C[3 * i + 1], C[3 * i + 2]] }));
+  return order.map((i) => ({ p: [X[3 * i], X[3 * i + 1], X[3 * i + 2]], c: [C[3 * i], C[3 * i + 1], C[3 * i + 2]], g: G[i] }));
 }
 
 const chunks = [];
 const header = Buffer.alloc(8);
 header.write("DSSP", 0, "ascii");
-header.writeUInt16LE(1, 4);
+header.writeUInt16LE(2, 4);
 const missing = MODELS.filter((name) => !(name in assets));
 if (missing.length) throw new Error("Draw_in_3D no longer has: " + missing.join(", "));
-const names = MODELS;
-header.writeUInt16LE(names.length, 6);
+// Draw_in_3D models (z flipped to the studio's axes), then the studio's own procedural ones.
+const models = MODELS.map((name) => ({ name, points: merged(name, assets[name]).map(({ p, c }) => ({ p: [p[0], p[1], -p[2]], c, g: 0 })) }))
+  .concat(STUDIO_MODELS.map((make) => make()));
+header.writeUInt16LE(models.length, 6);
 chunks.push(header);
 
-for (const name of names) {
-  const points = densify(merged(name, assets[name]).map(({ p, c }) => ({ p: [p[0], p[1], -p[2]], c })));
+for (const model of models) {
+  const name = model.name, hinge = model.hinge;
+  const points = densify(model.points);
   const min = [0, 1, 2].map((k) => Math.min(...points.map((q) => q.p[k])));
   const max = [0, 1, 2].map((k) => Math.max(...points.map((q) => q.p[k])));
   const nameBytes = Buffer.from(name, "utf8");
-  const head = Buffer.alloc(1 + nameBytes.length + 2 + 24);
+  const head = Buffer.alloc(1 + nameBytes.length + 2 + 24 + 1 + (hinge ? 12 : 0));
   let o = 0;
   head.writeUInt8(nameBytes.length, o); o += 1;
   nameBytes.copy(head, o); o += nameBytes.length;
   head.writeUInt16LE(points.length, o); o += 2;
   for (const v of [...min, ...max]) { head.writeFloatLE(v, o); o += 4; }
+  head.writeUInt8(hinge ? 1 : 0, o); o += 1;
+  if (hinge) for (const v of hinge) { head.writeFloatLE(v, o); o += 4; }
   const pos = Buffer.alloc(points.length * 6);
   const col = Buffer.alloc(points.length * 3);
   points.forEach(({ p, c }, i) => {
@@ -153,6 +175,7 @@ for (const name of names) {
     }
   });
   chunks.push(head, pos, col);
+  if (hinge) chunks.push(Buffer.from(points.map((q) => q.g)));
   const size = max.map((v, k) => (v - min[k]).toFixed(1)).join(" x ");
   console.log(`${name.padEnd(18)} ${points.length} points, ${size} units`);
 }

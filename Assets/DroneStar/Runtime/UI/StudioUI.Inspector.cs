@@ -310,6 +310,12 @@ namespace DroneStar.App
                     motion.Add(CueSlider("Ripple", 0f, 12f, 0.1f, c => c.Motion.Amount, (c, v) => c.Motion.Amount = v, Metres, "amount"));
                 }
             }
+            if (m.Kind == MotionKind.Flap)
+            {
+                motion.Add(CueSlider("Wingbeat", 0f, ShowBounds.MaxFlapDegrees, 0.5f, c => c.Motion.Amount, (c, v) => c.Motion.Amount = v, Degrees, "amount"));
+                motion.Add(CueSlider("Rate", 0.01f, 0.3f, 0.005f, c => c.Motion.FrequencyHz, (c, v) => c.Motion.FrequencyHz = v, v => v.ToString("0.000", Inv) + " Hz", "freq"));
+                motion.Add(Ui.Text("Beats the wings of models that have them (the Lạc bird). Wing tips are tens of metres from the shoulder, so a big bird beats slowly: watch the motion speed below.", "ds-hint"));
+            }
             if (m.Kind == MotionKind.Rise)
             {
                 motion.Add(CueSlider("Climb", 0f, ShowBounds.MaxMotionAmount, 0.5f, c => c.Motion.Amount, (c, v) => c.Motion.Amount = v, Metres, "amount"));
@@ -448,6 +454,11 @@ namespace DroneStar.App
             show.Add(DocSlider("Drones", 10f, ShowBounds.MaxDrones, 1f, d => d.DroneCount, (d, v) => d.DroneCount = Mathf.RoundToInt(v), v => v.ToString("0", Inv), "drones"));
             show.Add(DocSlider("Pre-show", 0f, 30f, 0.5f, d => d.PreShowSeconds, (d, v) => d.PreShowSeconds = v, Ui.Seconds, "pre"));
             show.Add(DocSlider("Post-show", 0f, 30f, 0.5f, d => d.PostShowSeconds, (d, v) => d.PostShowSeconds = v, Ui.Seconds, "post"));
+            var venue = new Segmented(new[] { "Night lake", "Festival stage" }, () => (int)app.Session.Document.Venue,
+                i => Edit("Change venue", d => d.Venue = (ShowVenue)i));
+            showBindings.Add(venue);
+            show.Add(Ui.Field("Venue", venue));
+            show.Add(Ui.Text("The festival stage adds a bronze drum, fountains, mist and lasers that follow the show. The flight plan is the same.", "ds-hint"));
             show.Add(Ui.Text("Fleet presets resize every shape, altitude and limit to suit the fleet; the slider changes only the count. " +
                              "Every transition solves an optimal drone-to-slot assignment, so thousands of drones take a few seconds to plan " +
                              "(the built-in show is pre-planned at 1K, 2K and 4K).", "ds-hint"));

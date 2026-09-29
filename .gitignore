@@ -48,3 +48,6 @@ Thumbs.db
 /Assets/Resources/PerformanceTestRun*
 /Assets/Resources.meta
 /Assets/Resources/
+
+# Burst writes its WebGL output next to the project on every build
+/Data/

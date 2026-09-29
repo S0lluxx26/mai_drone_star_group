@@ -73,6 +73,7 @@ namespace DroneStar.App
             smoothedFocus = app.Focus;
             smoothedRadius = Mathf.Max(app.FocusRadius, 10f);
             Title = app.Show.Document.Title;
+            if (score != null) score.Festival = app.Show.Document.Venue == ShowVenue.Festival;
             RunningChanged?.Invoke(true);
         }
 
@@ -160,14 +161,42 @@ namespace DroneStar.App
                 fov = Mathf.Lerp(58f, 50f, back);
                 return;
             }
+            bool festival = show.Document.Venue == ShowVenue.Festival;
             if (shot == -2)
             {
+                if (festival)
+                {
+                    Grandstand(tau, c, r, out position, out target, out fov);
+                    return;
+                }
                 position = new Vector3(0f, 24f, NightEnvironment.ShoreZ + 20f) + new Vector3(0f, 0f, tau * 1.2f);
                 target = c;
                 fov = 42f;
                 return;
             }
-            if (IsReveal(shot, show))
+            int festivalPick = -1;
+            if (festival)
+            {
+                // The festival is filmed from the grandstand (the stage below the formation, like the poster), from
+                // the water by the fountains looking up, and with the high orbit and three-quarter views. The shore
+                // push-in is left out: its path runs through the stage.
+                FormationSpec festivalSpec = show.Document.Cues[shot].Formation;
+                bool flat = FormationGenerator.IsPlanar(festivalSpec) || festivalSpec.Kind == FormationKind.Model;
+                int[] festivalShots = flat ? new[] { 5, 6, 5, 0 } : new[] { 5, 0, 6, 3 };
+                int pick = festivalShots[shot % festivalShots.Length];
+                festivalPick = pick;
+                if (pick == 5)
+                {
+                    Grandstand(tau, c, r, out position, out target, out fov);
+                    return;
+                }
+                if (pick == 6)
+                {
+                    StageLevel(tau, c, r, out position, out target, out fov);
+                    return;
+                }
+            }
+            if (!festival && IsReveal(shot, show))
             {
                 Reveal(shot, show, out position, out target, out fov);
                 return;
@@ -176,7 +205,9 @@ namespace DroneStar.App
             FormationSpec spec = show.Document.Cues[shot].Formation;
             bool facesAudience = FormationGenerator.IsPlanar(spec) && Mathf.Abs(spec.YawDegrees) < 30f && Mathf.Abs(spec.PitchDegrees) < 40f;
             int[] shots = facesAudience ? FrontalShots : AllShots;
-            switch (shots[shot % shots.Length])
+            int chosen = shots[shot % shots.Length];
+            if (festivalPick >= 0) chosen = festivalPick;
+            switch (chosen)
             {
                 case 0:
                 {
@@ -212,6 +243,31 @@ namespace DroneStar.App
             // Shots placed near the shore or the water keep big shapes (big fleets) whole with a wider lens.
             float reach = Mathf.Max((target - position).magnitude, 1f);
             fov = Mathf.Clamp(Mathf.Max(fov, 2f * Mathf.Atan(r * 0.85f / reach) * Mathf.Rad2Deg * 1.1f), 30f, 80f);
+        }
+
+        /// <summary>
+        /// High above the audience stands, looking over the festival stage at the formation: the whole scene from
+        /// the fountains to the top of the shape, drifting slowly sideways.
+        /// </summary>
+        static void Grandstand(float tau, Vector3 c, float r, out Vector3 position, out Vector3 target, out float fov)
+        {
+            position = new Vector3(Mathf.Sin(tau * 0.06f) * 24f, 58f, NightEnvironment.ShoreZ - 70f);
+            float dStage = Mathf.Max(FestivalVenue.StageCenter.z - position.z, 10f);
+            float dShow = Mathf.Max(c.z - position.z, 20f);
+            float low = Mathf.Atan2(-position.y - 2f, dStage);
+            float high = Mathf.Atan2(c.y + r * 0.9f - position.y, dShow);
+            float aim = 0.5f * (low + high);
+            target = position + new Vector3((c.x - position.x) * 0.5f / dShow, Mathf.Tan(aim), 1f) * dShow;
+            fov = Mathf.Clamp((high - low) * Mathf.Rad2Deg * 1.12f, 40f, 80f);
+        }
+
+        /// <summary>On the water in front of the fountain row, looking up past the stage at the formation.</summary>
+        static void StageLevel(float tau, Vector3 c, float r, out Vector3 position, out Vector3 target, out float fov)
+        {
+            position = new Vector3(-30f + tau * 1.8f, 3.5f, FestivalVenue.StageCenter.z - 52f);
+            target = new Vector3(c.x, c.y * 0.8f, c.z);
+            float reach = Vector3.Distance(position, target);
+            fov = Mathf.Clamp(2f * Mathf.Atan(r * 1.1f / reach) * Mathf.Rad2Deg * 1.15f, 50f, 80f);
         }
 
         /// <summary>Bounds of the launch grid, for the launch shot.</summary>

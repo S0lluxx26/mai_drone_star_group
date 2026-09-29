@@ -20,12 +20,36 @@ namespace DroneStar.Core
             if (motion == null) return;
             if (motion.Kind == MotionKind.Breathe) growth = Math.Max(0f, motion.Amount);
             else if (motion.Kind == MotionKind.Wave || motion.Kind == MotionKind.Rise) margin = Math.Max(0f, motion.Amount);
+            // A wing point at radius r from its shoulder moves at most 2·r·sin(θ/2); r stays within the shape.
+            else if (motion.Kind == MotionKind.Flap) growth = 2f * MathF.Sin(0.5f * Math.Max(0f, motion.Amount) * ShowMath.Deg2Rad);
         }
 
         /// <summary>Hold position of a slot. Parked (dark) slots never move.</summary>
         public static Vector3 Evaluate(MotionSpec motion, FormationResult frame, in Slot slot, float localTime, float hold)
         {
-            return slot.Dark ? slot.Position : Evaluate(motion, frame, slot.Position, localTime, hold);
+            if (slot.Dark) return slot.Position;
+            if (motion != null && motion.Kind == MotionKind.Flap) return Flap(motion, frame, slot, localTime, hold);
+            return Evaluate(motion, frame, slot.Position, localTime, hold);
+        }
+
+        /// <summary>
+        /// Wingbeat: each wing turns rigidly about its shoulder in the formation's plane, both tips rising together.
+        /// Rigid wings keep their own spacing, and the models leave a gap between wing roots and body.
+        /// </summary>
+        static Vector3 Flap(MotionSpec motion, FormationResult frame, in Slot slot, float localTime, float hold)
+        {
+            if (frame == null || !frame.HasWings || slot.Group == 0 || !(hold > 0f)) return slot.Position;
+            // The beat starts at the resting wing (sin 0) and the motion clock eases in and out, so no amplitude
+            // envelope is needed; one would add its own acceleration on wings a hundred metres long.
+            float tau = ShowMath.MotionClock(localTime, hold, RampSeconds);
+            float angle = motion.Amount * ShowMath.Deg2Rad * MathF.Sin(ShowMath.TwoPi * motion.FrequencyHz * tau);
+            float side = slot.Group == 2 ? 1f : -1f;
+            float hx = frame.WingHinge.X * side, hy = frame.WingHinge.Y;
+            float dx = slot.Local.X - hx, dy = slot.Local.Y - hy;
+            float a = angle * side, c = MathF.Cos(a), s = MathF.Sin(a);
+            float x = hx + c * dx - s * dy, y = hy + s * dx + c * dy;
+            float h = frame.HalfSize;
+            return frame.Center + frame.Right * (x * h) + frame.Up * (y * h) + frame.Normal * (slot.Local.Z * h);
         }
 
         public static Vector3 Evaluate(MotionSpec motion, FormationResult frame, Vector3 basePosition, float localTime, float hold)
@@ -69,6 +93,19 @@ namespace DroneStar.Core
         {
             if (motion == null || frame == null) return 0f;
             float radius = 0f;
+            if (motion.Kind == MotionKind.Flap)
+            {
+                if (!frame.HasWings) return 0f;
+                foreach (Slot s in frame.Slots)
+                {
+                    if (s.Dark || s.Group == 0) continue;
+                    float side = s.Group == 2 ? 1f : -1f;
+                    var d = new Vector2(s.Local.X - frame.WingHinge.X * side, s.Local.Y - frame.WingHinge.Y);
+                    radius = Math.Max(radius, d.Length() * frame.HalfSize);
+                }
+                // The envelope and motion clock add up to about a third on top of the plain sine's peak.
+                return 1.35f * motion.Amount * ShowMath.Deg2Rad * ShowMath.TwoPi * motion.FrequencyHz * radius;
+            }
             foreach (Slot s in frame.Slots)
             {
                 if (s.Dark) continue;

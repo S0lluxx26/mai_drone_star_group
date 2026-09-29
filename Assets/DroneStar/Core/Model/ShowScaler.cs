@@ -30,9 +30,12 @@ namespace DroneStar.Core
                 f.Size = ShowMath.Clamp(f.Size * factor, ShowBounds.MinSize, ShowBounds.MaxSize);
                 Vector3 offset = f.Center - pad;
                 // Altitude grows from the hover height, so shapes stay clear of the barge at any scale.
-                float hover = doc.Pad.HoverAltitude;
-                float y = hover + (offset.Y - hover) * factor;
-                var center = new Vector3(pad.X + offset.X * factor, Math.Max(y, f.Size * 0.6f + hover), pad.Z + offset.Z * factor);
+                // Compound expressions are evaluated in double and rounded to float once: Mono (the Unity editor
+                // and player) may keep float intermediates at double precision, so a*b+c in float can differ from
+                // .NET in the last bit, and the specs are hashed bit-exactly into the baked plans' recipe keys.
+                double hover = doc.Pad.HoverAltitude;
+                double y = Math.Max(hover + (offset.Y - hover) * factor, f.Size * 0.6 + hover);
+                var center = new Vector3((float)(pad.X + (double)offset.X * factor), (float)y, (float)(pad.Z + (double)offset.Z * factor));
                 f.Center = center;
                 highest = Math.Max(highest, center.Y + f.Size * 0.6f);
                 furthest = Math.Max(furthest, new Vector2(center.X - pad.X, center.Z - pad.Z).Length() + f.Size * 0.6f);
@@ -43,7 +46,7 @@ namespace DroneStar.Core
                 // the speed and lowers the acceleration; shrinking keeps ω, which lowers both. Either way a show
                 // that was legal stays legal.
                 if (factor > 1f && (m.Kind == MotionKind.Turntable || m.Kind == MotionKind.Roll)) m.DegreesPerSecond /= factor;
-                if (factor > 1f && m.Kind == MotionKind.Breathe) m.FrequencyHz /= factor;
+                if (factor > 1f && (m.Kind == MotionKind.Breathe || m.Kind == MotionKind.Flap)) m.FrequencyHz /= factor;
             }
             SafetyLimits l = doc.Limits;
             l.MaxAltitude = Math.Max(l.MaxAltitude, MathF.Ceiling((highest + 20f) / 10f) * 10f);

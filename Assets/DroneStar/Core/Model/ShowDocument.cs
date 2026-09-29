@@ -56,6 +56,11 @@ namespace DroneStar.Core
         Wave,
         /// <summary>The whole formation drifts upward by Amount metres (balloons, rockets).</summary>
         Rise,
+        /// <summary>
+        /// Wings beat: models with wings (the Lạc bird) swing each wing rigidly about its shoulder by up to Amount
+        /// degrees at FrequencyHz; the body stays still. Shapes without wings hold still.
+        /// </summary>
+        Flap,
     }
 
     /// <summary>Hard numeric bounds for every editable field. The sanitizer clamps loaded and edited values to these.</summary>
@@ -85,6 +90,9 @@ namespace DroneStar.Core
         public const float MaxEffectSpeed = 5f;
         public const float MaxBrightness = 1f;
         public const float MaxMotionAmount = 60f;
+
+        /// <summary>Largest wingbeat, degrees either side of the resting wing.</summary>
+        public const float MaxFlapDegrees = 35f;
     }
 
     public sealed class FormationSpec
@@ -219,6 +227,18 @@ namespace DroneStar.Core
         public LaunchPadSpec Clone() => (LaunchPadSpec)MemberwiseClone();
     }
 
+    /// <summary>Where a show is staged. The venue is scenery and effects only; it never changes the flight plan.</summary>
+    public enum ShowVenue
+    {
+        /// <summary>The night lake with the launch barge.</summary>
+        Lake,
+        /// <summary>
+        /// The lake with a festival stage in front of the audience: a bronze drum on a sun-star platform, boat-shaped
+        /// wings, fountains, mist and lasers choreographed to the show.
+        /// </summary>
+        Festival,
+    }
+
     /// <summary>The editable show: everything the compiler needs to produce flight paths and light tracks.</summary>
     public sealed class ShowDocument
     {
@@ -229,6 +249,7 @@ namespace DroneStar.Core
         public int DroneCount = 200;
         public float PreShowSeconds = 3f;
         public float PostShowSeconds = 3f;
+        public ShowVenue Venue = ShowVenue.Lake;
         public SafetyLimits Limits = new SafetyLimits();
         public LaunchPadSpec Pad = new LaunchPadSpec();
         public List<Cue> Cues = new List<Cue>();

@@ -37,10 +37,19 @@ namespace DroneStar.Tests
             }
         }
 
+        static DemoShows.Template Classic
+        {
+            get
+            {
+                foreach (DemoShows.Template t in DemoShows.Templates) if (t.Name == "Classic Night") return t;
+                throw new InvalidOperationException("No Classic Night template");
+            }
+        }
+
         /// <summary>The editing tests use the 360-drone classic show, which plans in a moment on any machine.</summary>
         IEnumerator OpenClassicShow()
         {
-            app.NewFromTemplate(DemoShows.Templates[1]);
+            app.NewFromTemplate(Classic);
             yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 60f, "classic show compile");
             Assert.That(app.Show.DroneCount, Is.EqualTo(360));
         }
@@ -96,6 +105,31 @@ namespace DroneStar.Tests
             var positions = new System.Numerics.Vector3[app.Show.DroneCount];
             app.Show.SamplePositions(app.Clock.Time, positions);
             return positions[drone].ToUnity();
+        }
+
+        [UnityTest]
+        public IEnumerator SecondDemoStagesTheFestival()
+        {
+            var festival = UnityEngine.Object.FindAnyObjectByType<FestivalVenue>(FindObjectsInactive.Include);
+            Assert.That(festival, Is.Not.Null);
+            Assert.That(festival.Visible, Is.False, "the first demo is on the plain lake");
+            app.RunDemo(DemoShows.Templates[1]);
+            yield return WaitFor(() => app.Show != null && !app.ShowIsStale && !app.IsCompiling && app.Show.Document.Venue == ShowVenue.Festival, 120f, "Demo 2 compile");
+            yield return WaitFor(() => app.Demo.IsRunning, 10f, "Demo 2 start");
+            Assert.That(festival.Visible, Is.True);
+            foreach (string part in new[] { "Festival Stage", "Stage Lights", "Fountains", "Mist", "Lasers" })
+            {
+                Assert.That(festival.transform.Find(part), Is.Not.Null, part);
+            }
+            // Into the Lạc bird's hold: the fountains and lasers run from the show clock.
+            CueTiming bird = app.Show.CueTimings[4];
+            app.Seek(bird.HoldStart + 2f);
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.That(app.Demo.Caption, Is.EqualTo("Rise of the Lạc Bird"));
+            app.Demo.End();
+            app.NewFromTemplate(Classic);
+            yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 60f, "classic show compile");
+            Assert.That(festival.Visible, Is.False, "a lake show hides the festival set");
         }
 
         [UnityTest]

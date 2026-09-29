@@ -17,6 +17,9 @@ namespace DroneStar.Tests
         [TestCase("DroneStar/CityWindows")]
         [TestCase("DroneStar/AdditiveLines")]
         [TestCase("DroneStar/DroneBody")]
+        [TestCase("DroneStar/FestivalBronze")]
+        [TestCase("DroneStar/Fountain")]
+        [TestCase("DroneStar/LaserBeam")]
         public void ShaderCompilesWithoutErrors(string name)
         {
             Shader shader = Shader.Find(name);
@@ -130,6 +133,9 @@ namespace DroneStar.Tests
             var so = new SerializedObject(app);
             Assert.That(so.FindProperty("shapePack").objectReferenceValue, Is.Not.Null, "model shapes");
             Assert.That(so.FindProperty("demoAssignments").objectReferenceValue, Is.Not.Null, "pre-solved demo transitions");
+            var festival = so.FindProperty("festival").objectReferenceValue as FestivalVenue;
+            Assert.That(festival, Is.Not.Null, "the festival venue for Demo 2");
+            Assert.That(festival.gameObject.activeSelf, Is.False, "shown only for shows staged at the festival");
         }
 
         [Test]
