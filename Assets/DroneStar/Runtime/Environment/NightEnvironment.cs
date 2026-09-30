@@ -179,21 +179,52 @@ namespace DroneStar.App
             return mesh;
         }
 
+        const int ShoreColumns = 64, ShoreRows = 10;
+        const float ShoreFar = -1800f, ShoreHalfWidth = 3200f;
+
+        static float ShoreRowZ(int r)
+        {
+            float t = (float)r / ShoreRows;
+            return Mathf.Lerp(ShoreZ + 6f, ShoreFar, t * t);
+        }
+
+        static float ShoreColumnX(int c) => Mathf.Lerp(-ShoreHalfWidth, ShoreHalfWidth, (float)c / ShoreColumns);
+
+        static float ShoreVertexHeight(int r, float x, float z) =>
+            r == 0 ? WaterLevel - 0.6f : 0.35f + Mathf.Max(0f, (-z - 320f) * 0.02f) + 0.8f * Mathf.Sin(x * 0.004f + z * 0.003f);
+
+        /// <summary>
+        /// Height of the audience shore's surface at (x, z), interpolated over the same triangles
+        /// <see cref="BuildShore"/> makes, so things placed on it (the audience, the stands) stand exactly on the ground.
+        /// </summary>
+        public static float ShoreHeight(float x, float z)
+        {
+            float span = ShoreZ + 6f - ShoreFar;
+            float fr = Mathf.Sqrt(Mathf.Clamp01((ShoreZ + 6f - z) / span)) * ShoreRows;
+            int r = Mathf.Min((int)fr, ShoreRows - 1);
+            float fc = Mathf.Clamp01((x + ShoreHalfWidth) / (2f * ShoreHalfWidth)) * ShoreColumns;
+            int c = Mathf.Min((int)fc, ShoreColumns - 1);
+            float z0 = ShoreRowZ(r), z1 = ShoreRowZ(r + 1), x0 = ShoreColumnX(c), x1 = ShoreColumnX(c + 1);
+            float u = Mathf.Clamp01((x - x0) / (x1 - x0)), v = Mathf.Clamp01((z - z0) / (z1 - z0));
+            float h00 = ShoreVertexHeight(r, x0, z0), h10 = ShoreVertexHeight(r, x1, z0);
+            float h01 = ShoreVertexHeight(r + 1, x0, z1), h11 = ShoreVertexHeight(r + 1, x1, z1);
+            // BuildShore splits each cell along the diagonal from (r, c) to (r + 1, c + 1).
+            return u >= v ? h00 + (h10 - h00) * u + (h11 - h10) * v : h00 + (h11 - h01) * u + (h01 - h00) * v;
+        }
+
         static Mesh BuildShore()
         {
             // Terrain strip from the water's edge back into the park, with a gentle beach slope.
-            const int columns = 64, rows = 10;
+            const int columns = ShoreColumns, rows = ShoreRows;
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
             for (int r = 0; r <= rows; r++)
             {
-                float t = (float)r / rows;
-                float z = Mathf.Lerp(ShoreZ + 6f, -1800f, t * t);
+                float z = ShoreRowZ(r);
                 for (int c = 0; c <= columns; c++)
                 {
-                    float x = Mathf.Lerp(-3200f, 3200f, (float)c / columns);
-                    float y = r == 0 ? WaterLevel - 0.6f : 0.35f + Mathf.Max(0f, (-z - 320f) * 0.02f) + 0.8f * Mathf.Sin(x * 0.004f + z * 0.003f);
-                    vertices.Add(new Vector3(x, y, z));
+                    float x = ShoreColumnX(c);
+                    vertices.Add(new Vector3(x, ShoreVertexHeight(r, x, z), z));
                 }
             }
             for (int r = 0; r < rows; r++)
@@ -400,6 +431,7 @@ namespace DroneStar.App
                 if (Mathf.Abs(x) < 70f) continue; // keep the central lawn clear for the audience view
                 float z = ShoreZ - 22f - (float)rng.NextDouble() * 180f;
                 float h = 7f + (float)rng.NextDouble() * 9f;
+                if (AudienceCrowd.IsAudienceArea(x, z)) continue; // the lawn and stands belong to the audience
                 var root = new Vector3(x, 0.35f, z);
                 kit.Cylinder(root, 0.35f, h * 0.3f, 5, caps: false);
                 kit.Cone(root + Vector3.up * h * 0.25f, h * 0.32f, h * 0.8f, 7);

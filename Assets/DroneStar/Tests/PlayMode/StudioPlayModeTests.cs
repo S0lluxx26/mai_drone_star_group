@@ -117,15 +117,26 @@ namespace DroneStar.Tests
             yield return WaitFor(() => app.Show != null && !app.ShowIsStale && !app.IsCompiling && app.Show.Document.Venue == ShowVenue.Festival, 120f, "Demo 2 compile");
             yield return WaitFor(() => app.Demo.IsRunning, 10f, "Demo 2 start");
             Assert.That(festival.Visible, Is.True);
-            foreach (string part in new[] { "Festival Stage", "Stage Lights", "Fountains", "Mist", "Lasers" })
+            foreach (string part in new[] { "Festival Stage", "Stage Lights", "Fountains", "Mist", "Lasers", "Flames", "Flame Reflections", "Steam" })
             {
                 Assert.That(festival.transform.Find(part), Is.Not.Null, part);
             }
-            // Into the Lạc bird's hold: the fountains and lasers run from the show clock.
+            // Into the Lạc bird's hold: the fountains and lasers run from the show clock, and its salvo of flames
+            // opens the scene. The clock is paused so the checks see exactly these moments.
             CueTiming bird = app.Show.CueTimings[4];
-            app.Seek(bird.HoldStart + 2f);
+            app.Clock.Pause();
+            app.Seek(bird.HoldStart + 0.5f);
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.That(app.Demo.Caption, Is.EqualTo("Rise of the Lạc Bird"));
+            Assert.That(festival.FlameLevel, Is.GreaterThan(0.5f), "the salvo as the bird appears");
+            Assert.That(festival.StageLight.r, Is.GreaterThan(0f), "the flames light the audience");
+            // The river steams; the bird's hold does not.
+            Assert.That(festival.SteamLevel, Is.EqualTo(0f));
+            CueTiming river = app.Show.CueTimings[2];
+            app.Seek(0.5f * (river.HoldStart + river.HoldEnd));
+            yield return new WaitForSecondsRealtime(0.3f);
+            Assert.That(festival.SteamLevel, Is.EqualTo(1f));
+            Assert.That(festival.FlameLevel, Is.EqualTo(0f));
             app.Demo.End();
             app.NewFromTemplate(Classic);
             yield return WaitFor(() => !app.ShowIsStale && !app.IsCompiling, 60f, "classic show compile");

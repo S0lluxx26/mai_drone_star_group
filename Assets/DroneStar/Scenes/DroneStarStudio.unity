@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &233107921
+--- !u!1 &8849057
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,44 +127,34 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 233107923}
-  - component: {fileID: 233107922}
+  - component: {fileID: 8849059}
+  - component: {fileID: 8849058}
   m_Layer: 0
-  m_Name: Night Environment
+  m_Name: Demo Director
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &233107922
+--- !u!114 &8849058
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 233107921}
+  m_GameObject: {fileID: 8849057}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7a2699115ad5af449a2c152b2a5f8102, type: 3}
+  m_Script: {fileID: 11500000, guid: 85413ee04ac217543ba9f06e843769ff, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.NightEnvironment
-  skyMaterial: {fileID: 2100000, guid: e3c6394b68fd844409f203971af53518, type: 2}
-  waterMaterial: {fileID: 2100000, guid: 60f69980c19f12f4a8752e7472e32b3f, type: 2}
-  landMaterial: {fileID: 2100000, guid: b00297f0643e210458a681787bcbff9a, type: 2}
-  hillMaterial: {fileID: 2100000, guid: 1b77ecffd71a1f04f88bb83c2db42ec8, type: 2}
-  deckMaterial: {fileID: 2100000, guid: 20b5b115c477dff41acb2def37147419, type: 2}
-  cityMaterial: {fileID: 2100000, guid: c432ec2956e664047a60548ed24f9118, type: 2}
-  treeMaterial: {fileID: 2100000, guid: a09ca8eafe939c04fb3d2218a0e36f1d, type: 2}
-  lampMaterial: {fileID: 2100000, guid: 6523989791505a446a5263ee4c97b49a, type: 2}
-  padMaterial: {fileID: 2100000, guid: be31ea8e2d1a8f04eab56b2b6f62ab5d, type: 2}
-  seed: 20260925
---- !u!4 &233107923
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.DemoDirector
+--- !u!4 &8849059
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 233107921}
+  m_GameObject: {fileID: 8849057}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -173,7 +163,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &288659132
+--- !u!1 &344668203
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -181,122 +171,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 288659134}
-  - component: {fileID: 288659133}
-  m_Layer: 0
-  m_Name: Capture Runner
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &288659133
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 288659132}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9f48131c97df6544c817af90fc6d826f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.CaptureRunner
---- !u!4 &288659134
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 288659132}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &334813793
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 334813796}
-  - component: {fileID: 334813795}
-  - component: {fileID: 334813794}
-  m_Layer: 0
-  m_Name: Studio UI
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &334813794
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 334813793}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4e2fff53461c8243919f806472af30c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.StudioUI
-  styleSheet: {fileID: 7433441132597879392, guid: 84432cbf755453a4a8e28987a645780f, type: 3}
---- !u!114 &334813795
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 334813793}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 33053e0406a27824c9106af28c21b66b, type: 2}
-  m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 0}
-  m_SortingOrder: 0
-  m_Position: 0
-  m_WorldSpaceSizeMode: 1
-  m_WorldSpaceWidth: 1920
-  m_WorldSpaceHeight: 1080
-  m_PivotReferenceSize: 0
-  m_Pivot: 0
-  m_WorldSpaceCollider: {fileID: 0}
---- !u!4 &334813796
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 334813793}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &411546549
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 411546552}
-  - component: {fileID: 411546551}
-  - component: {fileID: 411546550}
+  - component: {fileID: 344668206}
+  - component: {fileID: 344668205}
+  - component: {fileID: 344668204}
   m_Layer: 0
   m_Name: Soundtrack
   m_TagString: Untagged
@@ -304,25 +181,25 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &411546550
+--- !u!114 &344668204
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 411546549}
+  m_GameObject: {fileID: 344668203}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6a9ff26e90544a348b7ef7a6898d3fbf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.AmbientScore
---- !u!82 &411546551
+--- !u!82 &344668205
 AudioSource:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 411546549}
+  m_GameObject: {fileID: 344668203}
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
@@ -413,13 +290,13 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!4 &411546552
+--- !u!4 &344668206
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 411546549}
+  m_GameObject: {fileID: 344668203}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -428,7 +305,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &525423326
+--- !u!1 &766880080
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -436,58 +313,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 525423328}
-  - component: {fileID: 525423327}
-  m_Layer: 0
-  m_Name: Festival Venue
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &525423327
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 525423326}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dbc29584344b0054e9d1913a74200ea4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.FestivalVenue
-  bronzeMaterial: {fileID: 2100000, guid: fc265765714eb2e429e023ff55aa5f83, type: 2}
-  lightMaterial: {fileID: 2100000, guid: c8b50f160ae963a4a9cc2b889fdbb2ac, type: 2}
-  lightReflectionMaterial: {fileID: 2100000, guid: 32cc1900f4ec73041ba0178818ccf225, type: 2}
-  fountainMaterial: {fileID: 2100000, guid: 9380e2d92b333e14a870b3de927ae2d5, type: 2}
-  mistMaterial: {fileID: 2100000, guid: f449f083dba0bba439d53d994624d9f8, type: 2}
-  laserMaterial: {fileID: 2100000, guid: d16ed2a04769f42479d965cada082d33, type: 2}
---- !u!4 &525423328
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 525423326}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &685499748
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 685499750}
-  - component: {fileID: 685499749}
+  - component: {fileID: 766880082}
+  - component: {fileID: 766880081}
   m_Layer: 0
   m_Name: Drone Swarm
   m_TagString: Untagged
@@ -495,13 +322,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &685499749
+--- !u!114 &766880081
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 685499748}
+  m_GameObject: {fileID: 766880080}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4d8cd75021469d042b9f0906ad78f400, type: 3}
@@ -511,13 +338,13 @@ MonoBehaviour:
   reflectionMaterial: {fileID: 2100000, guid: eff6a693e8aab1d47ab02255978466c8, type: 2}
   trailMaterial: {fileID: 2100000, guid: 7b7cc7ea27cef0d4cbe032132db96596, type: 2}
   bodyMaterial: {fileID: 2100000, guid: e6af178b6dbe57e4c843b1c498b19e2d, type: 2}
---- !u!4 &685499750
+--- !u!4 &766880082
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 685499748}
+  m_GameObject: {fileID: 766880080}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -526,7 +353,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &757364652
+--- !u!1 &859048160
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -534,8 +361,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 757364654}
-  - component: {fileID: 757364653}
+  - component: {fileID: 859048162}
+  - component: {fileID: 859048161}
   m_Layer: 0
   m_Name: Moonlight
   m_TagString: Untagged
@@ -543,13 +370,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!108 &757364653
+--- !u!108 &859048161
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 757364652}
+  m_GameObject: {fileID: 859048160}
   m_Enabled: 1
   serializedVersion: 13
   m_Type: 1
@@ -608,13 +435,13 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
---- !u!4 &757364654
+--- !u!4 &859048162
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 757364652}
+  m_GameObject: {fileID: 859048160}
   serializedVersion: 2
   m_LocalRotation: {x: -0.039992537, y: 0.9563959, z: -0.15767191, w: -0.24258411}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -623,7 +450,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &758333913
+--- !u!1 &860608767
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -631,148 +458,11 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 758333915}
-  - component: {fileID: 758333914}
-  m_Layer: 0
-  m_Name: Demo Director
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &758333914
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 758333913}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85413ee04ac217543ba9f06e843769ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.DemoDirector
---- !u!4 &758333915
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 758333913}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &947262942
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 947262944}
-  - component: {fileID: 947262943}
-  m_Layer: 0
-  m_Name: Post Processing
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &947262943
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 947262942}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
-  m_IsGlobal: 1
-  priority: 1
-  blendDistance: 0
-  weight: 1
-  sharedProfile: {fileID: 11400000, guid: 115d0469ddba1a64d8b3fd833b19c590, type: 2}
---- !u!4 &947262944
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 947262942}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1026962402
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1026962404}
-  - component: {fileID: 1026962403}
-  m_Layer: 0
-  m_Name: WebBridge
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1026962403
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1026962402}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e5d5649b08b616c44b587a5f208e0fee, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.WebBridge
---- !u!4 &1026962404
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1026962402}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1520654249
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1520654254}
-  - component: {fileID: 1520654253}
-  - component: {fileID: 1520654252}
-  - component: {fileID: 1520654251}
-  - component: {fileID: 1520654250}
+  - component: {fileID: 860608772}
+  - component: {fileID: 860608771}
+  - component: {fileID: 860608770}
+  - component: {fileID: 860608769}
+  - component: {fileID: 860608768}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -780,13 +470,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1520654250
+--- !u!114 &860608768
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1520654249}
+  m_GameObject: {fileID: 860608767}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1ee8198bfe4eee740b9cfa4e88c81177, type: 3}
@@ -795,21 +485,21 @@ MonoBehaviour:
   orbitSensitivity: 0.25
   panSensitivity: 0.0016
   zoomSensitivity: 0.12
---- !u!81 &1520654251
+--- !u!81 &860608769
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1520654249}
+  m_GameObject: {fileID: 860608767}
   m_Enabled: 1
---- !u!114 &1520654252
+--- !u!114 &860608770
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1520654249}
+  m_GameObject: {fileID: 860608767}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
@@ -847,13 +537,13 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!20 &1520654253
+--- !u!20 &860608771
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1520654249}
+  m_GameObject: {fileID: 860608767}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -898,13 +588,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1520654254
+--- !u!4 &860608772
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1520654249}
+  m_GameObject: {fileID: 860608767}
   serializedVersion: 2
   m_LocalRotation: {x: 0.07845911, y: 0, z: 0, w: 0.99691737}
   m_LocalPosition: {x: 0, y: 40, z: -190}
@@ -913,7 +603,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2121179862
+--- !u!1 &1191853547
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -921,8 +611,57 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2121179864}
-  - component: {fileID: 2121179863}
+  - component: {fileID: 1191853549}
+  - component: {fileID: 1191853548}
+  m_Layer: 0
+  m_Name: Post Processing
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1191853548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1191853547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 1
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: 115d0469ddba1a64d8b3fd833b19c590, type: 2}
+--- !u!4 &1191853549
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1191853547}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1309712544
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1309712546}
+  - component: {fileID: 1309712545}
   m_Layer: 0
   m_Name: Drone Star Studio
   m_TagString: Untagged
@@ -930,36 +669,349 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2121179863
+--- !u!114 &1309712545
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2121179862}
+  m_GameObject: {fileID: 1309712544}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 32a78b47c0336c041b4fc15bc577210f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.ShowStudioApp
-  swarm: {fileID: 685499749}
-  environment: {fileID: 233107922}
-  cameraRig: {fileID: 1520654250}
-  ui: {fileID: 334813794}
-  demo: {fileID: 758333914}
-  score: {fileID: 411546550}
-  bridge: {fileID: 1026962403}
-  festival: {fileID: 525423327}
+  swarm: {fileID: 766880081}
+  environment: {fileID: 1592679172}
+  cameraRig: {fileID: 860608768}
+  ui: {fileID: 1607831483}
+  demo: {fileID: 8849058}
+  score: {fileID: 344668204}
+  bridge: {fileID: 2032131764}
+  festival: {fileID: 1622314766}
+  audience: {fileID: 1488464054}
   ledIntensity: 1
   shapePack: {fileID: 4900000, guid: 2323640259031eb4896481594b73fe7c, type: 3}
   demoAssignments: {fileID: 4900000, guid: 35650c6fbfbaa3b489845e7f203fb48a, type: 3}
---- !u!4 &2121179864
+--- !u!4 &1309712546
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2121179862}
+  m_GameObject: {fileID: 1309712544}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1488464053
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1488464055}
+  - component: {fileID: 1488464054}
+  m_Layer: 0
+  m_Name: Audience
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1488464054
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1488464053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f59da51da9e3a746b501eb0fec3aef2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.AudienceCrowd
+  bodyMaterial: {fileID: 2100000, guid: cfc6b5ef3342971459d68b685b3ded2e, type: 2}
+  phoneMaterial: {fileID: 2100000, guid: 2e6416d5237a6824f97f48f83b0bd35f, type: 2}
+  standMaterial: {fileID: 2100000, guid: 86f1af044dfeac341b894a7947ac0d94, type: 2}
+  standLightMaterial: {fileID: 2100000, guid: b16e803a0953d2049a4c46d6fd9ddef8, type: 2}
+--- !u!4 &1488464055
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1488464053}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1512691244
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1512691246}
+  - component: {fileID: 1512691245}
+  m_Layer: 0
+  m_Name: Capture Runner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1512691245
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512691244}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f48131c97df6544c817af90fc6d826f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.CaptureRunner
+--- !u!4 &1512691246
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512691244}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1592679171
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1592679173}
+  - component: {fileID: 1592679172}
+  m_Layer: 0
+  m_Name: Night Environment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1592679172
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592679171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a2699115ad5af449a2c152b2a5f8102, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.NightEnvironment
+  skyMaterial: {fileID: 2100000, guid: e3c6394b68fd844409f203971af53518, type: 2}
+  waterMaterial: {fileID: 2100000, guid: 60f69980c19f12f4a8752e7472e32b3f, type: 2}
+  landMaterial: {fileID: 2100000, guid: b00297f0643e210458a681787bcbff9a, type: 2}
+  hillMaterial: {fileID: 2100000, guid: 1b77ecffd71a1f04f88bb83c2db42ec8, type: 2}
+  deckMaterial: {fileID: 2100000, guid: 20b5b115c477dff41acb2def37147419, type: 2}
+  cityMaterial: {fileID: 2100000, guid: c432ec2956e664047a60548ed24f9118, type: 2}
+  treeMaterial: {fileID: 2100000, guid: a09ca8eafe939c04fb3d2218a0e36f1d, type: 2}
+  lampMaterial: {fileID: 2100000, guid: 6523989791505a446a5263ee4c97b49a, type: 2}
+  padMaterial: {fileID: 2100000, guid: be31ea8e2d1a8f04eab56b2b6f62ab5d, type: 2}
+  seed: 20260925
+--- !u!4 &1592679173
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592679171}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1607831482
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1607831485}
+  - component: {fileID: 1607831484}
+  - component: {fileID: 1607831483}
+  m_Layer: 0
+  m_Name: Studio UI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1607831483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1607831482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4e2fff53461c8243919f806472af30c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.StudioUI
+  styleSheet: {fileID: 7433441132597879392, guid: 84432cbf755453a4a8e28987a645780f, type: 3}
+--- !u!114 &1607831484
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1607831482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: 33053e0406a27824c9106af28c21b66b, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 0}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
+--- !u!4 &1607831485
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1607831482}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1622314765
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1622314767}
+  - component: {fileID: 1622314766}
+  m_Layer: 0
+  m_Name: Festival Venue
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &1622314766
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1622314765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbc29584344b0054e9d1913a74200ea4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.FestivalVenue
+  bronzeMaterial: {fileID: 2100000, guid: fc265765714eb2e429e023ff55aa5f83, type: 2}
+  lightMaterial: {fileID: 2100000, guid: c8b50f160ae963a4a9cc2b889fdbb2ac, type: 2}
+  lightReflectionMaterial: {fileID: 2100000, guid: 32cc1900f4ec73041ba0178818ccf225, type: 2}
+  fountainMaterial: {fileID: 2100000, guid: 9380e2d92b333e14a870b3de927ae2d5, type: 2}
+  mistMaterial: {fileID: 2100000, guid: f449f083dba0bba439d53d994624d9f8, type: 2}
+  laserMaterial: {fileID: 2100000, guid: d16ed2a04769f42479d965cada082d33, type: 2}
+  flameMaterial: {fileID: 2100000, guid: e2433b01d7be49a428e31687f893e732, type: 2}
+  flameReflectionMaterial: {fileID: 2100000, guid: 1838b4861742cf045bc89638157f55bb, type: 2}
+  steamMaterial: {fileID: 2100000, guid: ce2176ce573133e4a974ec4b427a3d1d, type: 2}
+--- !u!4 &1622314767
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1622314765}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2032131763
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2032131765}
+  - component: {fileID: 2032131764}
+  m_Layer: 0
+  m_Name: WebBridge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2032131764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2032131763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5d5649b08b616c44b587a5f208e0fee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DroneStar.Runtime::DroneStar.App.WebBridge
+--- !u!4 &2032131765
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2032131763}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -972,15 +1024,16 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1520654254}
-  - {fileID: 757364654}
-  - {fileID: 947262944}
-  - {fileID: 233107923}
-  - {fileID: 685499750}
-  - {fileID: 525423328}
-  - {fileID: 334813796}
-  - {fileID: 411546552}
-  - {fileID: 758333915}
-  - {fileID: 1026962404}
-  - {fileID: 2121179864}
-  - {fileID: 288659134}
+  - {fileID: 860608772}
+  - {fileID: 859048162}
+  - {fileID: 1191853549}
+  - {fileID: 1592679173}
+  - {fileID: 766880082}
+  - {fileID: 1622314767}
+  - {fileID: 1488464055}
+  - {fileID: 1607831485}
+  - {fileID: 344668206}
+  - {fileID: 8849059}
+  - {fileID: 2032131765}
+  - {fileID: 1309712546}
+  - {fileID: 1512691246}

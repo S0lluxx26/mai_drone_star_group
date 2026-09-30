@@ -1,18 +1,19 @@
 Shader "DroneStar/Fountain"
 {
-    // Festival fountains and mist, animated entirely on the GPU. Each quad is one droplet (or one mist puff):
+    // Festival fountains, mist and steam, animated entirely on the GPU. Each quad is one droplet (or one puff):
     //   POSITION   the jet's nozzle (world)
     //   UV0        (corner x, corner y, phase 0..1, jet index)
     //   UV1        (jet direction xyz, random 0..1)
-    //   COLOR.a    colour group / 4 (ring, arch, front row, mist)
+    //   COLOR.a    colour group / 4 (ring, arch, front row, mist; steam vents alternate the ring and arch colours)
     // _JetHeights[jet] (metres, set every frame from the choreography) gives each droplet its parabola; droplets
-    // are lit from the underwater lights below, so they glow at the base and fade toward the top.
+    // are lit from the underwater lights below, so they glow at the base and fade toward the top. Steam
+    // (_Mist 2) rises from vents in the water in slow billowing columns, as much as _SteamLevel allows.
     Properties
     {
         _Size ("Droplet size (m)", Float) = 0.45
         _MinPixels ("Minimum size (px)", Float) = 1.6
         _Intensity ("HDR intensity", Float) = 1.6
-        _Mist ("Mist puffs (1) instead of droplets (0)", Float) = 0
+        _Mist ("Droplets (0), mist puffs (1) or steam (2)", Float) = 0
     }
     SubShader
     {
@@ -41,6 +42,7 @@ Shader "DroneStar/Fountain"
             float _JetHeights[128];
             float4 _GroupColors[4];
             float _ShowTime;
+            float _SteamLevel;
 
             struct Attributes
             {
@@ -68,7 +70,20 @@ Shader "DroneStar/Fountain"
                 float phase = v.uv0.z, rnd = v.uv1.w;
                 float3 center;
                 float size, brightness;
-                if (_Mist > 0.5)
+                if (_Mist > 1.5)
+                {
+                    // Steam: each puff rises and swells from its vent, drifting downwind, then thins away.
+                    // Low, soft clouds (a few metres high) rather than columns: each puff starts somewhere around its
+                    // vent and spreads as it drifts.
+                    float age = frac(_ShowTime * (0.07 + 0.03 * rnd) + phase);
+                    float3 wind = float3(0.9, 0.0, 0.35);
+                    float3 around = float3((rnd - 0.5) * 7.0, 0.0, (frac(rnd * 7.31) - 0.5) * 4.0);
+                    float3 wobble = float3(sin(age * 5.0 + rnd * 20.0), 0.0, cos(age * 4.0 + rnd * 13.0)) * age * 3.0;
+                    center = nozzle + around + float3(0.0, 0.6 + age * (5.0 + 5.0 * rnd), 0.0) + wind * age * 7.0 + wobble;
+                    size = _Size * (0.45 + 1.6 * age);
+                    brightness = saturate(_SteamLevel) * pow(sin(3.14159 * age), 1.6) * (0.5 + 0.5 * rnd);
+                }
+                else if (_Mist > 0.5)
                 {
                     // Slow drifting puffs hugging the water.
                     float t = _ShowTime * (0.05 + 0.04 * rnd) + phase * 6.2832;
@@ -97,10 +112,12 @@ Shader "DroneStar/Fountain"
                 float pixelWorld = 2.0 * dist / (abs(UNITY_MATRIX_P._m11) * _ScreenParams.y);
                 float halfSize = max(size * 0.5, _MinPixels * 0.5 * pixelWorld);
                 brightness *= saturate(size * 0.5 / halfSize);
-                viewPos.xy += v.uv0.xy * halfSize;
+                // Idle jets and absent steam collapse to nothing, so they cost no fill.
+                viewPos.xy += v.uv0.xy * halfSize * (brightness > 1e-4 ? 1.0 : 0.0);
                 o.positionCS = TransformWViewToHClip(viewPos);
                 o.corner = v.uv0.xy;
-                o.color = lerp(float3(0.55, 0.62, 0.7), tint, 0.7) * brightness;
+                // Steam is mostly white, touched by the stage colours; water takes on its lights' colour.
+                o.color = lerp(float3(0.55, 0.62, 0.7), tint, _Mist > 1.5 ? 0.35 : 0.7) * brightness;
                 return o;
             }
 

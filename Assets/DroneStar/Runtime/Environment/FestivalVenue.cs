@@ -8,25 +8,33 @@ namespace DroneStar.App
     /// <summary>
     /// The festival venue (<see cref="ShowVenue.Festival"/>): a floating stage in front of the audience with a
     /// Đông Sơn bronze drum on a sun-star platform and boat-shaped wings ending in bird-head prows, gilded edges
-    /// that reflect in the lake, fountains with an arched water screen and mist, and lasers. Fountains, lasers and
-    /// the drum's glow are choreographed from the compiled show (its timeline and cue colours) as pure functions of
-    /// show time, so pausing, seeking and replays always agree. Built on first use; everything is procedural.
+    /// that reflect in the lake, fountains with an arched water screen, mist, lasers, flame projectors and steam.
+    /// Each cue's <see cref="StageEffects"/> (set in the editor) pick what the lasers, fountains, flames and steam
+    /// do; "Auto" follows the show's timeline and colours. Everything is a pure function of the compiled show and
+    /// show time (flame and steam timing come from <see cref="FestivalStage"/>, which the safety check and the cue
+    /// sheet share), so the editor preview, seeks, replays and the demo always agree. Built on first use; everything
+    /// is procedural.
     /// </summary>
     public sealed class FestivalVenue : MonoBehaviour
     {
         /// <summary>Centre of the stage platform: between the audience shore and the launch barge.</summary>
-        public static readonly Vector3 StageCenter = new Vector3(0f, 0f, -205f);
+        public static readonly Vector3 StageCenter = FestivalStage.Center.ToUnity();
 
-        const float PlatformRadius = 28f;
-        const float DeckHeight = 0.6f;
-        const float DrumBase = 1.6f;
-        const float BoatStart = 27f;
-        const float BoatEnd = 108f;
+        const float PlatformRadius = FestivalStage.PlatformRadius;
+        const float DeckHeight = FestivalStage.DeckHeight;
+        const float DrumBase = FestivalStage.DrumBase;
+        const float BoatStart = FestivalStage.BoatStart;
+        const float BoatEnd = FestivalStage.BoatEnd;
 
-        /// <summary>Seconds per drumbeat; the drum's glow, lasers and front jets pulse on it.</summary>
-        public const float Beat = 0.5f;
+        /// <summary>Seconds per drumbeat; the drum's glow, lasers, front jets and flames keep time with it.</summary>
+        public const float Beat = FestivalStage.Beat;
+
+        /// <summary>Fountain heights blend from one segment's pattern to the next over this long.</summary>
+        const float JetCrossfade = 1.2f;
 
         static readonly int JetHeightsId = Shader.PropertyToID("_JetHeights");
+        static readonly int FlameLevelsId = Shader.PropertyToID("_FlameLevels");
+        static readonly int SteamLevelId = Shader.PropertyToID("_SteamLevel");
         static readonly int GroupColorsId = Shader.PropertyToID("_GroupColors");
         static readonly int ShowTimeId = Shader.PropertyToID("_ShowTime");
         static readonly int PulseId = Shader.PropertyToID("_Pulse");
@@ -38,14 +46,25 @@ namespace DroneStar.App
         [SerializeField] Material fountainMaterial;
         [SerializeField] Material mistMaterial;
         [SerializeField] Material laserMaterial;
+        [SerializeField] Material flameMaterial;
+        [SerializeField] Material flameReflectionMaterial;
+        [SerializeField] Material steamMaterial;
 
         bool built;
         MeshRenderer stageRenderer;
         MeshRenderer fountainRenderer;
         MeshRenderer mistRenderer;
+        MeshRenderer steamRenderer;
+        MeshRenderer flameRenderer;
+        MeshRenderer flameReflectionRenderer;
         Mesh laserMesh;
         MaterialPropertyBlock stageProps;
         MaterialPropertyBlock waterProps;
+        MaterialPropertyBlock flameProps;
+        readonly float[] flameLevels = new float[32];
+        readonly float[] previousFlameLevels = new float[32];
+        float lastTickTime = float.NaN;
+        float lastOnsetTime = float.NegativeInfinity;
 
         readonly List<Jet> jets = new List<Jet>();
         readonly List<Emitter> emitters = new List<Emitter>();
@@ -71,7 +90,23 @@ namespace DroneStar.App
 
         public bool Visible => gameObject.activeSelf;
 
-        public void Configure(Material bronze, Material lights, Material lightReflections, Material fountains, Material mist, Material lasers)
+        /// <summary>Light the stage throws on the audience this frame (the flames), for <see cref="AudienceCrowd"/>.</summary>
+        public Color StageLight { get; private set; }
+
+        /// <summary>
+        /// Strength (0..1) of a flame burst that started this frame while the show played forward, or 0; the demo's
+        /// soundtrack roars with it.
+        /// </summary>
+        public float FlameOnset { get; private set; }
+
+        /// <summary>How much steam is rising (0..1).</summary>
+        public float SteamLevel { get; private set; }
+
+        /// <summary>Mean flame height across the projectors (0..1).</summary>
+        public float FlameLevel { get; private set; }
+
+        public void Configure(Material bronze, Material lights, Material lightReflections, Material fountains, Material mist, Material lasers,
+            Material flames, Material flameReflections, Material steam)
         {
             bronzeMaterial = bronze;
             lightMaterial = lights;
@@ -79,6 +114,9 @@ namespace DroneStar.App
             fountainMaterial = fountains;
             mistMaterial = mist;
             laserMaterial = lasers;
+            flameMaterial = flames;
+            flameReflectionMaterial = flameReflections;
+            steamMaterial = steam;
         }
 
         public void SetVisible(bool visible)
@@ -89,27 +127,66 @@ namespace DroneStar.App
 
         // ------------------------------------------------------------------ choreography
 
-        /// <summary>Animates fountains, lasers and the drum's glow for show time <paramref name="t"/>.</summary>
+        /// <summary>Animates fountains, lasers, flames, steam and the drum's glow for show time <paramref name="t"/>.</summary>
         public void Tick(CompiledShow show, float t, Camera cam)
         {
+            FlameOnset = 0f;
             if (!built || show == null || !gameObject.activeSelf) return;
             Moment m = MomentAt(show, t);
             float pulse = DrumPulse(t);
 
+            // Flames: the programme each cue asks for, from FestivalStage (the safety check arms the same windows).
+            int flameCount = Mathf.Min(FestivalStage.FlameNozzles.Count, flameLevels.Length);
+            float flameSum = 0f;
+            bool ignition = false;
+            for (int j = 0; j < flameCount; j++)
+            {
+                previousFlameLevels[j] = flameLevels[j];
+                flameLevels[j] = FestivalStage.FlameLevel(show, j, t);
+                flameSum += flameLevels[j];
+                ignition |= flameLevels[j] >= 0.3f && previousFlameLevels[j] < 0.3f;
+            }
+            FlameLevel = flameCount > 0 ? flameSum / flameCount : 0f;
+            // Only a show playing forward roars (seeks and scrubbing stay quiet), once per burst, not per projector.
+            float step = t - lastTickTime;
+            if (ignition && step > 0f && step < 0.25f && t - lastOnsetTime > 0.3f)
+            {
+                FlameOnset = 0.5f + 0.5f * FlameLevel;
+                lastOnsetTime = t;
+            }
+            if (step < 0f) lastOnsetTime = float.NegativeInfinity;
+            lastTickTime = t;
+            Color flameGlow = new Color(1f, 0.42f, 0.1f) * FlameLevel;
+            StageLight = flameGlow * 0.25f;
+            flameProps.SetFloatArray(FlameLevelsId, flameLevels);
+            flameProps.SetFloat(ShowTimeId, t);
+            flameRenderer.SetPropertyBlock(flameProps);
+            flameReflectionRenderer.SetPropertyBlock(flameProps);
+
             stageProps.SetFloat(PulseId, pulse * m.Energy);
-            stageProps.SetColor(AccentId, m.A.ToRender() * m.Energy * 0.6f);
+            stageProps.SetColor(AccentId, m.A.ToRender() * m.Energy * 0.6f + flameGlow * 1.6f);
             stageRenderer.SetPropertyBlock(stageProps);
 
-            for (int k = 0; k < jets.Count; k++) jetHeights[k] = JetHeight(jets[k], m, t, pulse);
+            // Fountains blend from the previous segment's pattern into this one's, so cues never snap the water.
+            float blend = Mathf.SmoothStep(0f, 1f, m.Local / JetCrossfade);
+            Moment before = blend < 1f ? MomentAt(show, m.Start - 0.01f) : m;
+            for (int k = 0; k < jets.Count; k++)
+            {
+                float now = JetHeight(jets[k], m, t, pulse);
+                jetHeights[k] = blend < 1f ? Mathf.Lerp(JetHeight(jets[k], before, t, pulse), now, blend) : now;
+            }
             groupColors[0] = WaterTint(m.A);
             groupColors[1] = WaterTint(m.B);
             groupColors[2] = new Color(1f, 0.62f, 0.22f).linear;
             groupColors[3] = new Color(0.36f, 0.52f, 0.95f).linear * (0.55f + 0.45f * m.Energy);
+            SteamLevel = FestivalStage.SteamLevel(show, t);
             waterProps.SetFloatArray(JetHeightsId, jetHeights);
             waterProps.SetVectorArray(GroupColorsId, groupColors);
             waterProps.SetFloat(ShowTimeId, t);
+            waterProps.SetFloat(SteamLevelId, SteamLevel);
             fountainRenderer.SetPropertyBlock(waterProps);
             mistRenderer.SetPropertyBlock(waterProps);
+            steamRenderer.SetPropertyBlock(waterProps);
 
             UpdateLasers(m, t, pulse, cam);
         }
@@ -118,12 +195,15 @@ namespace DroneStar.App
         struct Moment
         {
             public SegmentKind Kind;
+            public float Start;      // show time the segment began
             public float Local;      // seconds into the segment
+            public float CueLocal;   // seconds since the current cue's flight in began
             public float Progress;   // 0..1 through the segment
             public float Edge;       // 0 near a segment boundary (lasers blank there), 1 otherwise
             public float Energy;     // overall liveliness 0..1
             public LedColor A, B;
             public bool PreShow;
+            public StageEffects Fx;  // the cue's effects while it flies in and holds; null = automatic
         }
 
         static Moment MomentAt(CompiledShow show, float t)
@@ -132,7 +212,9 @@ namespace DroneStar.App
             ShowSegment seg = show.SegmentAt(t);
             if (seg == null) return m;
             m.Kind = seg.Kind;
+            m.Start = seg.Start;
             m.Local = Mathf.Max(0f, t - seg.Start);
+            m.CueLocal = m.Local;
             float duration = Mathf.Max(seg.End - seg.Start, 1e-3f);
             m.Progress = Mathf.Clamp01(m.Local / duration);
             m.Edge = Mathf.Clamp01(Mathf.Min(m.Local, seg.End - t) / 0.4f);
@@ -143,6 +225,11 @@ namespace DroneStar.App
                 LightSpec light = show.Document.Cues[cue].Light;
                 m.A = light.ColorA;
                 m.B = light.ColorB;
+                if (seg.CueIndex >= 0 && (seg.Kind == SegmentKind.Transit || seg.Kind == SegmentKind.Hold))
+                {
+                    m.Fx = show.Document.Cues[cue].Effects;
+                    if (cue < show.CueTimings.Count) m.CueLocal = Mathf.Max(0f, t - show.CueTimings[cue].TransitStart);
+                }
             }
             switch (seg.Kind)
             {
@@ -170,6 +257,52 @@ namespace DroneStar.App
         }
 
         static float JetHeight(Jet jet, Moment m, float t, float pulse)
+        {
+            FountainMode mode = m.Fx != null ? m.Fx.Fountains : FountainMode.Auto;
+            return mode == FountainMode.Auto ? AutoJetHeight(jet, m, t, pulse) : StagedJetHeight(jet, mode, m, t, pulse);
+        }
+
+        /// <summary>The fountain pattern a cue chose in the editor (Off, Dance, Arch or Tall).</summary>
+        static float StagedJetHeight(Jet jet, FountainMode mode, Moment m, float t, float pulse)
+        {
+            float wave = 0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * (0.22f * t - jet.Along * 2f));
+            float ramp = Mathf.SmoothStep(0f, 1f, m.CueLocal / 2.5f);
+            switch (mode)
+            {
+                case FountainMode.Off:
+                    return 0f;
+                case FountainMode.Dance:
+                    switch (jet.Group)
+                    {
+                        // The ring chases itself around the platform on the beat; the front row answers it.
+                        case 0: return 3f + 11f * Mathf.Exp(-Mathf.Repeat(t / Beat - jet.Along * 8f, 4f) * 2.5f) + 2f * pulse;
+                        case 1: return 2f + 4f * wave;
+                        default: return 2.5f + 9f * Mathf.Exp(-Mathf.Repeat(t * 2f - jet.Along * 3f, 3f) * 4f) + 3f * pulse;
+                    }
+                case FountainMode.Arch:
+                    switch (jet.Group)
+                    {
+                        case 1:
+                        {
+                            float x = jet.Along * 2f - 1f;
+                            float arch = 26f * Mathf.Sqrt(Mathf.Max(0f, 1f - x * x));
+                            return Mathf.Max(0.5f, arch * ramp + 1.2f * Mathf.Sin(t * 1.3f + x * 3f));
+                        }
+                        case 0: return 2.5f + 2f * wave;
+                        default: return 1.5f + 1.5f * pulse;
+                    }
+                default: // Tall
+                    switch (jet.Group)
+                    {
+                        case 0: return (18f + 3f * wave) * ramp;
+                        case 1: return (24f + 3f * wave) * ramp;
+                        default: return (12f + 2f * pulse) * ramp;
+                    }
+            }
+        }
+
+        /// <summary>The automatic pattern: follows the show's segments.</summary>
+        static float AutoJetHeight(Jet jet, Moment m, float t, float pulse)
         {
             float wave = 0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * (0.22f * t - jet.Along * 2f));
             // Every new scene opens with a burst from the ring that settles over a couple of seconds.
@@ -244,6 +377,12 @@ namespace DroneStar.App
         /// </summary>
         static void BeamPose(Emitter em, Moment m, float t, out Vector3 dir, out float power)
         {
+            LaserMode mode = m.Fx != null ? m.Fx.Lasers : LaserMode.Auto;
+            if (mode != LaserMode.Auto && (m.Kind == SegmentKind.Hold || m.Kind == SegmentKind.Transit))
+            {
+                StagedBeam(em, mode, m, t, out dir, out power);
+                return;
+            }
             float outward = em.Group == 0 ? -1f : em.Group == 1 ? 1f : 0f;
             bool centre = em.Group == 2;
             float tilt, lean;
@@ -285,6 +424,44 @@ namespace DroneStar.App
             dir = new Vector3(Mathf.Sin(tilt), Mathf.Cos(tilt), lean).normalized;
         }
 
+        /// <summary>The laser look a cue chose in the editor (Off, Fans, Sweep or Tunnel), dimmer while the drones fly.</summary>
+        static void StagedBeam(Emitter em, LaserMode mode, Moment m, float t, out Vector3 dir, out float power)
+        {
+            float outward = em.Group == 0 ? -1f : em.Group == 1 ? 1f : 0f;
+            bool centre = em.Group == 2;
+            float tilt, lean;
+            power = m.Kind == SegmentKind.Hold ? 1f : 0.7f;
+            switch (mode)
+            {
+                case LaserMode.Off:
+                    tilt = 0f;
+                    lean = 0.3f;
+                    power = 0f;
+                    break;
+                case LaserMode.Fans:
+                    tilt = centre ? (em.Along - 0.5f) * 1.0f : outward * (0.15f + 0.85f * em.Along);
+                    lean = centre ? 1.15f : 0.35f;
+                    break;
+                case LaserMode.Sweep:
+                {
+                    // Every fan swings across and back over two bars of the drum, the prows mirroring each other.
+                    float s = Mathf.Sin(2f * Mathf.PI * t / (2f * FestivalStage.Bar));
+                    tilt = centre ? (em.Along - 0.5f) * 0.55f + 0.65f * s : outward * (0.2f + 0.55f * em.Along + 0.35f * s);
+                    lean = centre ? 1.0f : 0.3f;
+                    break;
+                }
+                default:
+                {
+                    // Tunnel: the prow fans lean in over the stage and the centre fan opens wide, a roof of light.
+                    float turn = 0.08f * Mathf.Sin(t * 0.8f + em.Along * 2f);
+                    tilt = centre ? (em.Along - 0.5f) * 1.6f + turn : -outward * (0.35f + 0.3f * em.Along) + turn;
+                    lean = centre ? 0.55f : 0.45f + 0.25f * em.Along;
+                    break;
+                }
+            }
+            dir = new Vector3(Mathf.Sin(tilt), Mathf.Cos(tilt), lean).normalized;
+        }
+
         // ------------------------------------------------------------------ construction
 
         void Build()
@@ -304,6 +481,11 @@ namespace DroneStar.App
             mistRenderer = Spawn("Mist", BuildMist(), mistMaterial);
             laserMesh = BuildLasers();
             Spawn("Lasers", laserMesh, laserMaterial);
+            flameProps = new MaterialPropertyBlock();
+            Mesh flames = BuildFlames();
+            flameRenderer = Spawn("Flames", flames, flameMaterial);
+            flameReflectionRenderer = Spawn("Flame Reflections", flames, flameReflectionMaterial);
+            steamRenderer = Spawn("Steam", BuildSteam(), steamMaterial);
         }
 
         MeshRenderer Spawn(string objectName, Mesh mesh, Material material)
@@ -353,11 +535,11 @@ namespace DroneStar.App
             return m.ToMesh("Festival Stage");
         }
 
-        static float BoatDeck(float s) => 1.0f + 5.2f * s * s * s;
+        static float BoatDeck(float s) => FestivalStage.BoatDeck(s);
 
-        static float BoatHalfWidth(float s) => 6.4f * (1f - 0.82f * s * s);
+        static float BoatHalfWidth(float s) => FestivalStage.BoatHalfWidth(s);
 
-        static Vector3 BoatAt(float s, int side) => StageCenter + new Vector3(side * Mathf.Lerp(BoatStart, BoatEnd, s), 0f, 0f);
+        static Vector3 BoatAt(float s, int side) => FestivalStage.BoatAt(s, side).ToUnity();
 
         static void BuildBoat(SetPieceMesh m, int side)
         {
@@ -495,6 +677,78 @@ namespace DroneStar.App
                 AddQuad(positions, uv0, uv1, colors, indices, p, (float)rng.NextDouble(), 0, Vector3.up, (float)rng.NextDouble(), 3);
             }
             return QuadMesh("Mist", positions, uv0, uv1, colors, indices);
+        }
+
+        /// <summary>Flame particles for every projector in <see cref="FestivalStage.FlameNozzles"/>, plus a base flash each.</summary>
+        static Mesh BuildFlames()
+        {
+            var positions = new List<Vector3>();
+            var uv0 = new List<Vector4>();
+            var uv1 = new List<Vector4>();
+            var colors = new List<Color>();
+            var indices = new List<int>();
+            var rng = new System.Random(59);
+            const int particles = 110;
+            for (int j = 0; j < FestivalStage.FlameNozzles.Count; j++)
+            {
+                Vector3 nozzle = FestivalStage.FlameNozzles[j].ToUnity();
+                for (int d = 0; d <= particles; d++)
+                {
+                    float phase = (d + (float)rng.NextDouble() * 0.6f) / particles;
+                    AddFlameQuad(positions, uv0, uv1, colors, indices, nozzle, phase, j, (float)rng.NextDouble(), (float)rng.NextDouble(), d == particles ? 1f : 0f);
+                }
+            }
+            return QuadMesh("Flame Particles", positions, uv0, uv1, colors, indices);
+        }
+
+        static void AddFlameQuad(List<Vector3> positions, List<Vector4> uv0, List<Vector4> uv1, List<Color> colors, List<int> indices,
+            Vector3 nozzle, float phase, int jet, float rnd, float rnd2, float kind)
+        {
+            int start = positions.Count;
+            for (int k = 0; k < 4; k++)
+            {
+                float cx = k == 0 || k == 3 ? -1f : 1f, cy = k < 2 ? -1f : 1f;
+                positions.Add(nozzle);
+                uv0.Add(new Vector4(cx, cy, phase, jet));
+                uv1.Add(new Vector4(rnd, rnd2, kind, 0f));
+                colors.Add(Color.white);
+            }
+            indices.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
+        }
+
+        /// <summary>Steam vents in the water: a row between the platform and the front fountains, and along both boats.</summary>
+        static Mesh BuildSteam()
+        {
+            var positions = new List<Vector3>();
+            var uv0 = new List<Vector4>();
+            var uv1 = new List<Vector4>();
+            var colors = new List<Color>();
+            var indices = new List<int>();
+            var rng = new System.Random(83);
+            var vents = new List<Vector3>();
+            float water = NightEnvironment.WaterLevel + 0.2f;
+            for (int i = 0; i < 30; i++) vents.Add(StageCenter + new Vector3(Mathf.Lerp(-92f, 92f, i / 29f), water, -PlatformRadius - 2.5f));
+            for (int side = -1; side <= 1; side += 2)
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    float s = 0.08f + 0.09f * i;
+                    Vector3 p = BoatAt(s, side);
+                    float w = BoatHalfWidth(s) + 1.5f;
+                    vents.Add(new Vector3(p.x, water, p.z - w));
+                    vents.Add(new Vector3(p.x, water, p.z + w));
+                }
+            }
+            const int puffs = 36;
+            for (int v = 0; v < vents.Count; v++)
+            {
+                for (int k = 0; k < puffs; k++)
+                {
+                    float phase = (k + (float)rng.NextDouble() * 0.7f) / puffs;
+                    AddQuad(positions, uv0, uv1, colors, indices, vents[v], phase, 0, Vector3.up, (float)rng.NextDouble(), v % 2);
+                }
+            }
+            return QuadMesh("Steam", positions, uv0, uv1, colors, indices);
         }
 
         static void AddQuad(List<Vector3> positions, List<Vector4> uv0, List<Vector4> uv1, List<Color> colors, List<int> indices,

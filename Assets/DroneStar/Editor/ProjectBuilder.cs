@@ -133,7 +133,8 @@ namespace DroneStar.EditorTools
         sealed class Materials
         {
             public Material Glow, Reflection, Trails, Body, Sky, Water, Land, Hills, Deck, City, Trees, Lamps, Pads;
-            public Material Bronze, StageLights, StageReflections, Fountains, Mist, Lasers;
+            public Material Bronze, StageLights, StageReflections, Fountains, Mist, Lasers, Flames, FlameReflections, Steam;
+            public Material CrowdBodies, CrowdPhones, Stands, StandLights;
         }
 
         static void BuildMaterials(out Materials m)
@@ -259,6 +260,64 @@ namespace DroneStar.EditorTools
                 x.SetFloat("_Mist", 1f);
             });
             m.Lasers = Mat("Lasers", RequireShader("DroneStar/LaserBeam"), x => x.SetFloat("_Intensity", 1.9f));
+            Shader flame = RequireShader("DroneStar/Flame");
+            m.Flames = Mat("Flames", flame, x =>
+            {
+                x.SetFloat("_Size", 1.5f);
+                x.SetFloat("_MinPixels", 1.5f);
+                x.SetFloat("_Intensity", 3.4f);
+                x.SetFloat("_Reach", DroneStar.Core.FestivalStage.FlameReach);
+                x.SetFloat("_Reflection", 0f);
+                x.DisableKeyword("_REFLECTION");
+            });
+            m.FlameReflections = Mat("FlameReflections", flame, x =>
+            {
+                x.SetFloat("_Size", 1.5f);
+                x.SetFloat("_MinPixels", 1.2f);
+                x.SetFloat("_Intensity", 3.4f);
+                x.SetFloat("_Reach", DroneStar.Core.FestivalStage.FlameReach);
+                x.SetFloat("_Reflection", 1f);
+                x.EnableKeyword("_REFLECTION");
+                x.SetFloat("_WaterLevel", NightEnvironment.WaterLevel);
+                x.SetFloat("_ReflectionStretch", 2.4f);
+                x.SetFloat("_ReflectionStrength", 0.35f);
+            });
+            m.Steam = Mat("Steam", RequireShader("DroneStar/Fountain"), x =>
+            {
+                x.SetFloat("_Size", 5f);
+                x.SetFloat("_MinPixels", 0f);
+                x.SetFloat("_Intensity", 0.07f);
+                x.SetFloat("_Mist", 2f);
+            });
+
+            // The audience (both venues): silhouettes, their phones, and the grandstands.
+            Shader crowd = RequireShader("DroneStar/Crowd");
+            m.CrowdBodies = Mat("AudienceBodies", crowd, x =>
+            {
+                x.SetFloat("_Mode", 0f);
+                x.SetFloat("_SrcBlend", (float)BlendMode.One);
+                x.SetFloat("_DstBlend", (float)BlendMode.Zero);
+                x.SetFloat("_ZWrite", 1f);
+                x.SetColor("_BodyColor", new Color(0.006f, 0.008f, 0.012f));
+                x.renderQueue = (int)RenderQueue.AlphaTest;
+            });
+            m.CrowdPhones = Mat("AudiencePhones", crowd, x =>
+            {
+                x.SetFloat("_Mode", 1f);
+                x.SetFloat("_SrcBlend", (float)BlendMode.One);
+                x.SetFloat("_DstBlend", (float)BlendMode.One);
+                x.SetFloat("_ZWrite", 0f);
+                x.SetFloat("_Intensity", 3.5f);
+                x.SetFloat("_MinPixels", 1.3f);
+                x.renderQueue = (int)RenderQueue.Transparent;
+            });
+            m.Stands = Mat("Grandstands", RequireShader("Universal Render Pipeline/Lit"), x => LitColor(x, new Color(0.045f, 0.045f, 0.055f), 0.2f, 0.25f));
+            m.StandLights = Mat("GrandstandLights", RequireShader("DroneStar/DroneGlow"), x =>
+            {
+                x.SetFloat("_Size", 0.5f);
+                x.SetFloat("_MinPixels", 1.6f);
+                x.SetFloat("_Intensity", 2.2f);
+            });
         }
 
         static T RequireAsset<T>(string path) where T : UnityEngine.Object
@@ -406,8 +465,12 @@ namespace DroneStar.EditorTools
 
             var festivalGo = new GameObject("Festival Venue");
             var festival = festivalGo.AddComponent<FestivalVenue>();
-            festival.Configure(m.Bronze, m.StageLights, m.StageReflections, m.Fountains, m.Mist, m.Lasers);
+            festival.Configure(m.Bronze, m.StageLights, m.StageReflections, m.Fountains, m.Mist, m.Lasers, m.Flames, m.FlameReflections, m.Steam);
             festivalGo.SetActive(false); // shown by the app for shows staged at the festival venue
+
+            var audienceGo = new GameObject("Audience");
+            var audience = audienceGo.AddComponent<AudienceCrowd>();
+            audience.Configure(m.CrowdBodies, m.CrowdPhones, m.Stands, m.StandLights);
 
             var uiGo = new GameObject("Studio UI");
             var doc = uiGo.AddComponent<UIDocument>();
@@ -438,6 +501,7 @@ namespace DroneStar.EditorTools
             appSo.FindProperty("score").objectReferenceValue = score;
             appSo.FindProperty("bridge").objectReferenceValue = bridge;
             appSo.FindProperty("festival").objectReferenceValue = festival;
+            appSo.FindProperty("audience").objectReferenceValue = audience;
             appSo.FindProperty("shapePack").objectReferenceValue = RequireAsset<TextAsset>(DataDir + "/ShapePack.bytes");
             appSo.FindProperty("demoAssignments").objectReferenceValue = RequireAsset<TextAsset>(DataDir + "/DemoAssignments.bytes");
             appSo.ApplyModifiedPropertiesWithoutUndo();

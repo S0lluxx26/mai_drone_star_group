@@ -67,8 +67,11 @@ namespace DroneStar.Tests
                 Assert.That(r.WarningCount, Is.EqualTo(0), findings);
                 Assert.That(r.MinSeparation, Is.GreaterThanOrEqualTo(doc.Limits.MinSeparation), findings);
                 Assert.That(show.Duration, Is.LessThan(doc.Limits.MaxFlightSeconds), doc.DroneCount + " drones fit the battery");
-                TestContext.WriteLine(string.Format("{0} drones: {1:0.0} s, closest {2:0.00} m, top speed {3:0.0} m/s, peak accel {4:0.0} m/s², ceiling {5:0} m",
-                    doc.DroneCount, show.Duration, r.MinSeparation, r.MaxSpeed, r.MaxAcceleration, r.MaxAltitude));
+                // Demo 2 fires the stage flames, so its safety check also measures the drones' distance from them.
+                Assert.That(r.FlamesArmed, Is.EqualTo(doc.Venue == ShowVenue.Festival), doc.Title);
+                TestContext.WriteLine(string.Format("{0} ({1} drones): {2:0.0} s, closest {3:0.00} m, top speed {4:0.0} m/s, peak accel {5:0.0} m/s², ceiling {6:0} m, flames {7}",
+                    doc.Title, doc.DroneCount, show.Duration, r.MinSeparation, r.MaxSpeed, r.MaxAcceleration, r.MaxAltitude,
+                    r.FlamesArmed ? (float.IsPositiveInfinity(r.MinFlameClearance) ? "> " + r.FlameSearchRadius + " m" : r.MinFlameClearance.ToString("0.0") + " m") : "none"));
             }
             Assert.That(compiler.CacheMisses, Is.EqualTo(0), "every transition came from the baked file");
         }

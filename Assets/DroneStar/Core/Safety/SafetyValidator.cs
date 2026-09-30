@@ -24,6 +24,8 @@ namespace DroneStar.Core
         ParkedDrones,
         /// <summary>A summary line: more intervals exist than the report lists.</summary>
         MoreFindings,
+        /// <summary>A drone within <see cref="FestivalStage.FlameSafetyDistance"/> of the stage flames while they are armed.</summary>
+        FlameZone,
     }
 
     public sealed class ValidationIssue
@@ -66,6 +68,19 @@ namespace DroneStar.Core
         /// <summary>Violation intervals not listed because a kind hit its reporting cap.</summary>
         public int SuppressedIssues;
 
+        /// <summary>True when the show arms the festival stage's flames at some point.</summary>
+        public bool FlamesArmed;
+
+        /// <summary>
+        /// Closest any drone came to a flame while flames were armed; +∞ means none came within
+        /// <see cref="FlameSearchRadius"/> (or no flames were armed).
+        /// </summary>
+        public float MinFlameClearance = float.PositiveInfinity;
+
+        public float MinFlameClearanceTime;
+        public int MinFlameClearanceDrone = -1;
+        public float FlameSearchRadius = SafetyValidator.FlameSearchRadius;
+
         public int ErrorCount => Count(IssueSeverity.Error);
         public int WarningCount => Count(IssueSeverity.Warning);
         public bool Passed => ErrorCount == 0;
@@ -97,6 +112,9 @@ namespace DroneStar.Core
 
         /// <summary>Acceleration above the limit by more than this factor fails the show (below it: warning).</summary>
         public const float AccelerationErrorFactor = 1.1f;
+
+        /// <summary>Drones further than this from the flames are not measured exactly (the report says "more than").</summary>
+        public const float FlameSearchRadius = 60f;
 
         readonly CompiledShow show;
         readonly SafetyLimits limits;
@@ -247,7 +265,33 @@ namespace DroneStar.Core
                 }
             }
 
+            int flameCue = FestivalStage.ArmedFlameCue(show, t);
+            if (flameCue >= 0) CheckFlames(t, flameCue);
+
             BeginSeparation(k, t, cue);
+        }
+
+        /// <summary>
+        /// While a scene's flames are armed, every drone (flying or parked) must keep
+        /// <see cref="FestivalStage.FlameSafetyDistance"/> from every flame column, whatever the burst pattern.
+        /// </summary>
+        void CheckFlames(float t, int flameCue)
+        {
+            Report.FlamesArmed = true;
+            float limit = FestivalStage.FlameSafetyDistance;
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 p = cur[i];
+                if (!ShowMath.IsFinite(p) || FestivalStage.DistanceToFlameBounds(p) >= FlameSearchRadius) continue;
+                float d = FestivalStage.DistanceToFlames(p);
+                if (d < Report.MinFlameClearance)
+                {
+                    Report.MinFlameClearance = d;
+                    Report.MinFlameClearanceTime = t;
+                    Report.MinFlameClearanceDrone = i;
+                }
+                if (d < limit) Flag(IssueKind.FlameZone, IssueSeverity.Error, t, flameCue, i, -1, d, limit, lowerIsWorse: true);
+            }
         }
 
         void BeginSeparation(int k, float t, int cue)
@@ -450,6 +494,8 @@ namespace DroneStar.Core
                     return string.Format(ci, "Drone {0} flies {1:0.0} m from the pad centre (fence {2:0} m) at {3}{4}.", i.DroneA + 1, i.Value, i.Limit, when, cue);
                 case IssueKind.FlightTime:
                     return string.Format(ci, "The flight lasts {0:0} s but batteries allow {1:0} s.", i.Value, i.Limit);
+                case IssueKind.FlameZone:
+                    return string.Format(ci, "Drone {0} comes within {1:0.0} m of the stage flames (keep {2:0} m) at {3}{4}. Move the formation away from the stage or turn this scene's flames off.", i.DroneA + 1, i.Value, i.Limit, when, cue);
                 case IssueKind.ParkedDrones:
                     return string.Format(ci, "{0:0} of {1:0} drones park dark{2}: the shape is too small for them at safe spacing.", i.Value, i.Limit, cue);
                 default:

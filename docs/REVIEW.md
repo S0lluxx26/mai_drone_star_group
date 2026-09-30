@@ -116,3 +116,22 @@ What the safety check and the tests caught while building the second demo, and w
 | The default UI font had no Vietnamese letters (Lạc, Đông Sơn). | Be Vietnam Pro (SIL OFL) for the whole interface. |
 | Inside Unity, six baked Demo 2 transitions (1K and 4K presets) were re-solved. The fleet scaler computed the drum's and the sun's height as `size * 0.6f + hover` in float; Mono keeps that intermediate at double precision, so it landed one bit away from .NET's, and the recipe keys (which hash the specs bit-exactly) no longer matched the bake. | The scaler evaluates its compound expressions in double and rounds once, so every runtime produces the same bits; a Mono build of the core now hits all 32 baked Demo 2 transitions, and the WebGL build plans both demos entirely from the bake. |
 | The baked-plan cost check (1e-6) left little room over the way runtimes round the hold motions (up to 2e-7, coherently across a formation). | Tolerance 1e-4: runtime rounding passes, a stale bake (off by whole percents) is still re-solved. |
+
+## Round 5 — 2026-09-30: the editor and the demo, stage effects and the audience
+
+The question was how well the editor and the demo connect. The drones did, one to one (the demo plays the
+compiled show the editor makes); the festival's effects did not: they were chosen automatically, invisible in
+the editor, missing from the saved file and the exports, and unchecked for safety. Findings and fixes:
+
+| Finding | Fix |
+|---|---|
+| Lasers, fountains and mist were automatic: the author could not say "fire for the drum, calm for the river". | `StageEffects` on every cue (lasers, fountains, flames, steam) in the inspector; *Auto* keeps the old look, and Demo 2 is now authored with them, so opening it in the editor shows exactly what the demo plays. |
+| Nothing kept drones away from the stage: the depth slider reaches −200 m and the stage is 205 m in front of the pad. With flames that is a real hazard. | A flame zone in the safety check: while a scene's flames are armed, every drone keeps 20 m from every flame column, with the closest clearance in the report and on the Safety tab. Tested with a formation parked over the stage. |
+| The effects were not in the show file or the exports, so a crew could not run them. | Saved per cue (older files open unchanged), a stage cue sheet export with SMPTE timecodes and each flame safety window, and an effects column in the flight report. |
+| The editor gave no preview of where effects happen. | Flame and steam lanes on the timeline and tags on the cue cards. |
+| The first steam read as a wall of coloured streaks hiding the stage. | Low, soft, mostly white clouds that spread from each vent, at a third of the intensity. |
+| Lit by the flames, the crowd turned into orange cut-outs. | Backlit silhouettes: nearly black, with a faint rim in the show's colour. |
+| The five-option selectors clipped their last option in the inspector. | Segmented buttons share the width and may shrink. |
+| The lake demo never showed its audience: the shots from the crowd were picked only for flat scenes, and its are 3D models. | The lake finale is filmed from among the audience. |
+| Fountain patterns snapped when the next cue chose another. | Heights blend over 1.2 s at every segment boundary. |
+| Trees stood where the grandstands and lawn crowd go. | The audience area is kept clear of trees. |

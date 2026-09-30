@@ -14,10 +14,11 @@ namespace DroneStar.App
         public const float TitleSeconds = 7f;
         public const float EndCardSeconds = 6f;
 
-        // Shot types: 0 orbit, 1 shore push-in, 2 lake level, 3 high three-quarter, 4 side dolly.
-        // Every fifth scene (from the third) instead opens close beside one drone and pulls back to reveal it.
+        // Shot types: 0 orbit, 1 shore push-in, 2 lake level, 3 high three-quarter, 4 side dolly, 5 grandstand,
+        // 6 stage level, 7 over the crowd. Every fifth scene (from the third) instead opens close beside one drone
+        // and pulls back to reveal it.
         static readonly int[] AllShots = { 0, 1, 2, 3, 4 };
-        static readonly int[] FrontalShots = { 1, 0, 2 };
+        static readonly int[] FrontalShots = { 1, 0, 7, 2 };
 
         ShowStudioApp app;
         ShowCameraRig rig;
@@ -25,6 +26,7 @@ namespace DroneStar.App
         CameraMode previousMode = CameraMode.Orbit;
         int lastShot = int.MinValue;
         int lastChimedCue = -1;
+        bool applauded;
         float shotStart;
         float endCardTime = -1f;
         bool previousLoop;
@@ -67,6 +69,7 @@ namespace DroneStar.App
             if (score != null) score.Play();
             lastShot = int.MinValue;
             lastChimedCue = -1;
+            applauded = false;
             captionCue = -1;
             revealCue = -1;
             endCardTime = -1f;
@@ -126,7 +129,20 @@ namespace DroneStar.App
             if (seg != null && seg.Kind == SegmentKind.Hold && cue != lastChimedCue)
             {
                 lastChimedCue = cue;
-                if (score != null) score.Chime(cue);
+                if (score != null)
+                {
+                    score.Chime(cue);
+                    // The audience greets the first scene and roars for the finale.
+                    int last = show.CueTimings.Count - 1;
+                    if (cue == 0 || cue == last) score.Cheer(cue == last ? 1f : 0.55f);
+                }
+            }
+            if (score != null && app.Festival != null && app.Festival.FlameOnset > 0f) score.Flame(app.Festival.FlameOnset);
+            bool landed = seg != null && seg.Kind == SegmentKind.Ground && show.SegmentIndexAt(t) > 0;
+            if (landed && !applauded && score != null)
+            {
+                applauded = true;
+                score.Cheer(0.8f);
             }
 
             UpdateOverlays(t, show, seg, dt);
@@ -182,7 +198,7 @@ namespace DroneStar.App
                 // push-in is left out: its path runs through the stage.
                 FormationSpec festivalSpec = show.Document.Cues[shot].Formation;
                 bool flat = FormationGenerator.IsPlanar(festivalSpec) || festivalSpec.Kind == FormationKind.Model;
-                int[] festivalShots = flat ? new[] { 5, 6, 5, 0 } : new[] { 5, 0, 6, 3 };
+                int[] festivalShots = flat ? new[] { 5, 6, 7, 0 } : new[] { 5, 0, 6, 7 };
                 int pick = festivalShots[shot % festivalShots.Length];
                 festivalPick = pick;
                 if (pick == 5)
@@ -196,6 +212,18 @@ namespace DroneStar.App
                     return;
                 }
             }
+            // The lake show's finale is watched from among the audience, as are frontal scenes whose turn it is.
+            bool finale = shot == show.CueTimings.Count - 1;
+            if (!festival && !IsReveal(shot, show) && (finale || FrontalShots[shot % FrontalShots.Length] == 7 && FacesAudience(show.Document.Cues[shot].Formation)))
+            {
+                OverTheCrowd(tau, c, r, out position, out target, out fov);
+                return;
+            }
+            if (festivalPick == 7)
+            {
+                OverTheCrowd(tau, c, r, out position, out target, out fov);
+                return;
+            }
             if (!festival && IsReveal(shot, show))
             {
                 Reveal(shot, show, out position, out target, out fov);
@@ -203,8 +231,7 @@ namespace DroneStar.App
             }
             // Flat shapes face the audience, so film them from the front; 3D shapes get the full shot list.
             FormationSpec spec = show.Document.Cues[shot].Formation;
-            bool facesAudience = FormationGenerator.IsPlanar(spec) && Mathf.Abs(spec.YawDegrees) < 30f && Mathf.Abs(spec.PitchDegrees) < 40f;
-            int[] shots = facesAudience ? FrontalShots : AllShots;
+            int[] shots = FacesAudience(spec) ? FrontalShots : AllShots;
             int chosen = shots[shot % shots.Length];
             if (festivalPick >= 0) chosen = festivalPick;
             switch (chosen)
@@ -243,6 +270,24 @@ namespace DroneStar.App
             // Shots placed near the shore or the water keep big shapes (big fleets) whole with a wider lens.
             float reach = Mathf.Max((target - position).magnitude, 1f);
             fov = Mathf.Clamp(Mathf.Max(fov, 2f * Mathf.Atan(r * 0.85f / reach) * Mathf.Rad2Deg * 1.1f), 30f, 80f);
+        }
+
+        static bool FacesAudience(FormationSpec spec) =>
+            FormationGenerator.IsPlanar(spec) && Mathf.Abs(spec.YawDegrees) < 30f && Mathf.Abs(spec.PitchDegrees) < 40f;
+
+        /// <summary>
+        /// From among the audience on the lawn, a little above their heads: silhouettes and phone lights across the
+        /// bottom of the frame, the lake (and the festival stage) beyond, the formation above. Drifts like a handheld.
+        /// </summary>
+        static void OverTheCrowd(float tau, Vector3 c, float r, out Vector3 position, out Vector3 target, out float fov)
+        {
+            position = AudienceCrowd.CameraSpot + new Vector3(tau * 0.22f, 0.06f * Mathf.Sin(tau * 0.9f), 0.05f * tau);
+            float d = Mathf.Max(c.z - position.z, 20f);
+            float low = -6f * Mathf.Deg2Rad;
+            float high = Mathf.Atan2(c.y + r * 0.95f - position.y, d);
+            float aim = 0.5f * (low + high);
+            target = position + new Vector3((c.x - position.x) * 0.6f / d, Mathf.Tan(aim), 1f) * d;
+            fov = Mathf.Clamp((high - low) * Mathf.Rad2Deg * 1.1f, 40f, 75f);
         }
 
         /// <summary>

@@ -20,6 +20,8 @@ namespace DroneStar.Tests
         [TestCase("DroneStar/FestivalBronze")]
         [TestCase("DroneStar/Fountain")]
         [TestCase("DroneStar/LaserBeam")]
+        [TestCase("DroneStar/Flame")]
+        [TestCase("DroneStar/Crowd")]
         public void ShaderCompilesWithoutErrors(string name)
         {
             Shader shader = Shader.Find(name);
@@ -136,6 +138,9 @@ namespace DroneStar.Tests
             var festival = so.FindProperty("festival").objectReferenceValue as FestivalVenue;
             Assert.That(festival, Is.Not.Null, "the festival venue for Demo 2");
             Assert.That(festival.gameObject.activeSelf, Is.False, "shown only for shows staged at the festival");
+            var audience = so.FindProperty("audience").objectReferenceValue as AudienceCrowd;
+            Assert.That(audience, Is.Not.Null, "the audience on the shore");
+            Assert.That(audience.gameObject.activeSelf, Is.True, "the audience watches every show"); 
         }
 
         [Test]

@@ -79,7 +79,12 @@ namespace DroneStar.Core
                         .Set("kind", cue.Motion.Kind.ToString())
                         .Set("degreesPerSecond", cue.Motion.DegreesPerSecond)
                         .Set("frequencyHz", cue.Motion.FrequencyHz)
-                        .Set("amount", cue.Motion.Amount)));
+                        .Set("amount", cue.Motion.Amount))
+                    .Set("effects", JsonValue.NewObject()
+                        .Set("lasers", cue.Effects.Lasers.ToString())
+                        .Set("fountains", cue.Effects.Fountains.ToString())
+                        .Set("flames", cue.Effects.Flames.ToString())
+                        .Set("steam", cue.Effects.Steam)));
             }
             root.Set("cues", cues);
             return root.ToJson(pretty);
@@ -203,6 +208,17 @@ namespace DroneStar.Core
                 m.DegreesPerSecond = motion.GetFloat("degreesPerSecond", m.DegreesPerSecond);
                 m.FrequencyHz = motion.GetFloat("frequencyHz", m.FrequencyHz);
                 m.Amount = motion.GetFloat("amount", m.Amount);
+            }
+
+            // Shows saved before stage effects existed keep the automatic choreography and no flames or steam.
+            JsonValue effects = c.Get("effects");
+            if (effects != null)
+            {
+                StageEffects fx = cue.Effects;
+                fx.Lasers = ReadEnum(effects.GetString("lasers", null), fx.Lasers);
+                fx.Fountains = ReadEnum(effects.GetString("fountains", null), fx.Fountains);
+                fx.Flames = ReadEnum(effects.GetString("flames", null), fx.Flames);
+                fx.Steam = effects.GetBool("steam", fx.Steam);
             }
             return cue;
         }

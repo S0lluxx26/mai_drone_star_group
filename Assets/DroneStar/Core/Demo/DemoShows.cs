@@ -36,7 +36,7 @@ namespace DroneStar.Core
         public static readonly IReadOnlyList<Template> Templates = new[]
         {
             new Template { Name = "A Night of Stars", Description = "The 8,192-drone flagship: sixteen scenes with full-colour 3D models (robot, whale, Eiffel Tower, starship...) and a starburst finale. The Show tab's fleet presets fly it with fewer drones.", Create = StarGroupNight },
-            new Template { Name = "Rise of the Lạc Bird", Description = "Demo 2: 8,192 drones over a Đông Sơn festival stage. A golden Lạc bird beats its wings above the bronze drum, with fountains, mist and lasers.", Create = LacBirdFestival },
+            new Template { Name = "Rise of the Lạc Bird", Description = "Demo 2: 8,192 drones over a Đông Sơn festival stage. A golden Lạc bird beats its wings above the bronze drum, with lasers, flames, fountains and steam cued scene by scene.", Create = LacBirdFestival },
             new Template { Name = "Classic Night", Description = "The original 360-drone show: light enough for any device.", Create = ClassicNight },
             new Template { Name = "Heart & Rings", Description = "A short 200-drone wedding piece.", Create = HeartAndRings },
             new Template { Name = "Blank Show", Description = "One formation to start from.", Create = Blank },
@@ -149,26 +149,36 @@ namespace DroneStar.Core
             doc.Limits.GeofenceRadius = 260f;
             doc.Pad.Spacing = 2f;
             float a = GrandAltitude;
-            doc.Cues.Add(ModelCue("Drum of Đông Sơn", "Bronze drum", 150f, a,
-                new MotionSpec { Kind = MotionKind.Roll, DegreesPerSecond = 6f }, hold: 10f));
-            doc.Cues.Add(MakeCue("Sun of the Drum", FormationKind.Star, 150f, points: 14, layers: 2, altitude: a,
+            // Stage effects are cued scene by scene, as a show director would: fire on the drum rhythm for the drum,
+            // calm and steam for the river, the water arch and a flame salvo for the bird's reveal, everything for
+            // the finale. The drones hold 200 m from the stage, far outside the flames' safety zone.
+            doc.Cues.Add(Staged(ModelCue("Drum of Đông Sơn", "Bronze drum", 150f, a,
+                new MotionSpec { Kind = MotionKind.Roll, DegreesPerSecond = 6f }, hold: 10f),
+                LaserMode.Fans, FountainMode.Dance, FlameMode.Beat));
+            doc.Cues.Add(Staged(MakeCue("Sun of the Drum", FormationKind.Star, 150f, points: 14, layers: 2, altitude: a,
                 light: Light(LightEffect.Radial, WarmWhite, Amber),
-                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.08f, FrequencyHz = 0.2f }, hold: 8f));
-            doc.Cues.Add(MakeCue("River of Waves", FormationKind.Wave, 170f, altitude: a,
+                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.08f, FrequencyHz = 0.2f }, hold: 8f),
+                LaserMode.Sweep, FountainMode.Tall));
+            doc.Cues.Add(Staged(MakeCue("River of Waves", FormationKind.Wave, 170f, altitude: a,
                 light: Light(LightEffect.Gradient, Cyan, Blue),
-                motion: new MotionSpec { Kind = MotionKind.Wave, Amount = 2.5f, FrequencyHz = 0.16f }, hold: 8f));
-            doc.Cues.Add(MakeCue("Lotus in Bloom", FormationKind.Flower, 140f, points: 8, altitude: a,
+                motion: new MotionSpec { Kind = MotionKind.Wave, Amount = 2.5f, FrequencyHz = 0.16f }, hold: 8f),
+                LaserMode.Off, FountainMode.Dance, steam: true));
+            doc.Cues.Add(Staged(MakeCue("Lotus in Bloom", FormationKind.Flower, 140f, points: 8, altitude: a,
                 light: Light(LightEffect.Gradient, Pink, WarmWhite),
-                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.1f, FrequencyHz = 0.18f }, hold: 8f));
+                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.1f, FrequencyHz = 0.18f }, hold: 8f),
+                LaserMode.Fans, FountainMode.Arch, steam: true));
             // Wing tips sit tens of metres from the shoulder, so a bird this size beats its wings slowly (within the
             // speed and acceleration limits); bigger fleets slow it further.
-            doc.Cues.Add(ModelCue("Rise of the Lạc Bird", "Lac bird", 180f, a,
-                new MotionSpec { Kind = MotionKind.Flap, Amount = 10f, FrequencyHz = 0.065f }, hold: 16f));
-            doc.Cues.Add(MakeCue("Heart of the Festival", FormationKind.Heart, 110f, altitude: a,
+            doc.Cues.Add(Staged(ModelCue("Rise of the Lạc Bird", "Lac bird", 180f, a,
+                new MotionSpec { Kind = MotionKind.Flap, Amount = 10f, FrequencyHz = 0.065f }, hold: 16f),
+                LaserMode.Tunnel, FountainMode.Arch, FlameMode.Salvo));
+            doc.Cues.Add(Staged(MakeCue("Heart of the Festival", FormationKind.Heart, 110f, altitude: a,
                 light: Light(LightEffect.Pulse, Crimson, Gold),
-                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.08f, FrequencyHz = 0.2f }, hold: 8f));
-            doc.Cues.Add(ModelCue("The Lạc Bird Soars", "Lac bird", 180f, a,
-                new MotionSpec { Kind = MotionKind.Rise, Amount = 25f }, hold: 12f, speed: 1.6f));
+                motion: new MotionSpec { Kind = MotionKind.Breathe, Amount = 0.08f, FrequencyHz = 0.2f }, hold: 8f),
+                LaserMode.Off, FountainMode.Dance, steam: true));
+            doc.Cues.Add(Staged(ModelCue("The Lạc Bird Soars", "Lac bird", 180f, a,
+                new MotionSpec { Kind = MotionKind.Rise, Amount = 25f }, hold: 12f, speed: 1.6f),
+                LaserMode.Sweep, FountainMode.Tall, FlameMode.Salvo, steam: true));
             ShowSanitizer.Sanitize(doc);
             return doc;
         }
@@ -306,6 +316,12 @@ namespace DroneStar.Core
                     if (cue.Formation.Center.Y < clear) cue.Formation.Center = new Vector3(cue.Formation.Center.X, clear, cue.Formation.Center.Z);
                 }
             }
+            return cue;
+        }
+
+        static Cue Staged(Cue cue, LaserMode lasers, FountainMode fountains, FlameMode flames = FlameMode.Off, bool steam = false)
+        {
+            cue.Effects = new StageEffects { Lasers = lasers, Fountains = fountains, Flames = flames, Steam = steam };
             return cue;
         }
 

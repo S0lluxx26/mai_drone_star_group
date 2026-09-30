@@ -33,6 +33,7 @@ namespace DroneStar.App
         [SerializeField] AmbientScore score;
         [SerializeField] WebBridge bridge;
         [SerializeField] FestivalVenue festival;
+        [SerializeField] AudienceCrowd audience;
         [SerializeField, Range(0.5f, 3f)] float ledIntensity = 1f;
         [Tooltip("The model shape pack (Data/ShapePack.bytes, exported from Draw_in_3D by tools/export-shape-pack.mjs).")]
         [SerializeField] TextAsset shapePack;
@@ -86,6 +87,8 @@ namespace DroneStar.App
         public DemoDirector Demo => demo;
         public AmbientScore Score => score;
         public WebBridge Bridge => bridge;
+        public FestivalVenue Festival => festival;
+        public AudienceCrowd Audience => audience;
 
         public event Action ShowCompiled;
         public event Action ValidationFinished;
@@ -100,7 +103,8 @@ namespace DroneStar.App
             LoadBundledData();
             if (swarm != null && (WebBridge.IsWeb || Application.isMobilePlatform)) swarm.DetailedCapacity = 128;
             requestedDemo = RequestedDemo();
-            ShowDocument first = ForThisDevice(requestedDemo == 2 ? DemoShows.LacBirdFestival() : DemoShows.StarGroupNight());
+            int opened = requestedDemo > 0 ? requestedDemo : RequestedOpen();
+            ShowDocument first = ForThisDevice(opened == 2 ? DemoShows.LacBirdFestival() : DemoShows.StarGroupNight());
             Session = new ShowEditSession(first);
             Session.Changed += OnDocumentChanged;
             if (demo != null) demo.Initialize(this, cameraRig, score);
@@ -171,6 +175,20 @@ namespace DroneStar.App
             return url.Contains("demo=1") || url.Contains("#demo") ? 1 : 0;
         }
 
+        /// <summary>
+        /// Which demo to open in the studio without playing it (2 = the Lạc bird festival, otherwise the flagship):
+        /// "-open 2" on the command line or "?open=2" in the page address.
+        /// </summary>
+        static int RequestedOpen()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < args.Length; i++)
+            {
+                if (args[i] == "-open") return args[i + 1] == "2" ? 2 : 1;
+            }
+            return (Application.absoluteURL ?? "").Contains("open=2") ? 2 : 1;
+        }
+
         System.Collections.IEnumerator BeginDemoWhenReady()
         {
             while (Show == null || IsCompiling || ShowIsStale) yield return null;
@@ -202,7 +220,9 @@ namespace DroneStar.App
             {
                 Clock.Tick(dt, Show.Duration);
                 RenderFrame();
-                if (festival != null && festival.Visible) festival.Tick(Show, Clock.Time, cameraRig != null ? cameraRig.GetComponent<Camera>() : Camera.main);
+                bool staged = festival != null && festival.Visible;
+                if (staged) festival.Tick(Show, Clock.Time, cameraRig != null ? cameraRig.GetComponent<Camera>() : Camera.main);
+                if (audience != null) audience.Tick(Show, Clock.Time, staged ? festival.StageLight : Color.black);
             }
         }
 
@@ -657,6 +677,14 @@ namespace DroneStar.App
             CompiledShow show = Show;
             ValidationReport report = Report;
             Export(ShowLibrary.SafeName(show.Document.Title) + " flight report.md", () => ShowExporter.ToFlightReport(show, report), "text/markdown");
+        }
+
+        public void ExportStageCueSheet()
+        {
+            if (!EnsureFresh()) return;
+            CompiledShow show = Show;
+            if (show.Document.Venue != ShowVenue.Festival) Notify("This show is staged on the night lake, so the cue sheet has no stage effects.", false);
+            Export(ShowLibrary.SafeName(show.Document.Title) + " stage cues.csv", () => ShowExporter.ToStageCueSheet(show), "text/csv");
         }
 
         bool EnsureFresh()

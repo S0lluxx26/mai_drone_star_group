@@ -4,7 +4,8 @@
 
 [**▶ Demo 1: A Night of Stars**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=1) ·
 [**▶ Demo 2: Rise of the Lạc Bird**](https://s0lluxx26.github.io/mai_drone_star_group/?demo=2) ·
-[Open the studio](https://s0lluxx26.github.io/mai_drone_star_group/)
+[Open the studio](https://s0lluxx26.github.io/mai_drone_star_group/) ·
+[Edit Demo 2](https://s0lluxx26.github.io/mai_drone_star_group/?open=2)
 
 !["MAI" written by 8,192 drones in A Night of Stars, the flagship demo](docs/media/hero.png)
 
@@ -15,9 +16,15 @@ city skyline and a generated soundtrack. Every drone is a detailed quadcopter wi
 underneath; fly the close-up camera beside one to watch its props spin as it leans into each move.
 Press **Demo Run** to watch a demo, or your own show, as a cinematic presentation with titles, scene captions
 and camera cuts. The second demo, *Rise of the Lạc Bird*, is a Đông Sơn festival: a golden Lạc bird of 8,192 drones
-beats its wings above a bronze-drum stage, with fountains, an arched water screen, mist and lasers that follow the show.
+beats its wings above a bronze-drum stage, with lasers, flame projectors, fountains and steam cued scene by scene,
+watched by thousands of people on the shore and in the grandstands. Every one of those effects is set in the
+editor (open it with *Edit Demo 2*), so the demo plays exactly what the show says.
 
 ![Rise of the Lạc Bird: the Lạc bird above the bronze-drum festival stage, with fountains and lasers](docs/media/festival.png)
+
+| The finale, from among the audience | Stage effects, scene by scene |
+|---|---|
+| ![The Lạc bird soars over the stage flames, seen over the heads of the crowd with their phones up](docs/media/festival-crowd.png) | ![The Stage effects section of the inspector and the flame and steam lanes on the timeline](docs/media/stage-effects.png) |
 
 | Editing a show | The demo run | Safety check |
 |---|---|---|
@@ -50,15 +57,23 @@ beats its wings above a bronze-drum stage, with fountains, an arched water scree
 - **Motion while holding** — turntable, roll, breathe, wave, rise and wingbeat (the Lạc bird's wings swing about
   its shoulders), eased in and out so drones never jerk.
 - **Two venues** — the night lake, or the festival stage: a bronze drum on a sun-star platform with boat-shaped
-  wings, fountains, mist and lasers, all choreographed from the show's timing and colours (the flight plan is the
-  same either way).
+  wings. The flight plan is the same either way.
+- **Stage effects, scene by scene** — on the festival stage each cue sets its **lasers** (auto, off, fans, sweep,
+  tunnel), **fountains** (auto, off, dance, arch, tall), **flames** (off, beat on the drum rhythm, salvo) and
+  **steam**; *Auto* follows the show's timing and colours. The timeline shows where flames and steam run, the
+  cue cards say so, and the preview, the demo and the exports all read the same settings.
+- **An audience** — thousands of people on the shore lawn and in two grandstands, drawn as silhouettes a
+  handful of pixels tall from the lake: they raise their phones while a scene holds, cheer as each scene appears
+  (loudest for the finale), applaud the landing, and are lit by the show and the flames. The demo films some
+  scenes from among them.
 - **Automatic flight planning** — every change is re-planned in the background: shortest legal
   transition times, optimal drone-to-slot matching and parking of surplus drones.
 - **Safety check** — the whole show is flown in simulation: closest approach between every pair of
-  drones, speed, acceleration, ceiling, ground clearance, geofence and battery time, with each
-  finding one click away on the timeline.
+  drones, speed, acceleration, ceiling, ground clearance, geofence and battery time, and — while a scene's
+  flames are armed — a 20 m clearance from every flame, with each finding one click away on the timeline.
 - **Undo/redo**, save on the device (in the browser's storage on the web), import/export `.dronestar.json`, export per-drone
-  **trajectories (CSV)** and a **flight report (Markdown)**.
+  **trajectories (CSV)**, a **flight report (Markdown)** and a **stage cue sheet (CSV)**: each scene's flight in,
+  hold and flame safety window in show seconds and SMPTE timecode, for the laser, fountain and flame operators.
 - **Demo Run** — title card, a launch shot from among the pads, a camera shot per scene (some open beside a
   single drone and pull back to reveal the shape), captions, soundtrack and an end card.
 - **Detailed drones** — the nearest drones are drawn as full quadcopters (shell, carbon arms, motors, prop
@@ -94,7 +109,7 @@ The flagship demo, *A Night of Stars* (8,192 drones, 16 scenes, 9 min 9 s), pass
 of 1.27 m against a 1.2 m limit, a top speed of 11.1 m/s against 12 m/s and peak acceleration of
 4.8 m/s² against 5 m/s²; every smaller preset passes too (2,048 drones: 5 min 53 s, closest pass 1.28 m).
 Demo 2 (8,192 drones, 7 scenes, 5 min 12 s) passes with a closest pass of 1.27 m and peak acceleration of
-4.0 m/s². The original 360-drone show is still there as the *Classic Night* template.
+4.0 m/s², and its drones stay more than 60 m from the stage flames (20 m required). The original 360-drone show is still there as the *Classic Night* template.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and [docs/REVIEW.md](docs/REVIEW.md) for
 the review log.
 
@@ -103,7 +118,7 @@ the review log.
 | | |
 |---|---|
 | **Left** | Show cues — select, reorder, duplicate, delete; add a formation or a **3D Model** at the bottom |
-| **Right** | Inspector: **Cue** (shape or model, timing, light, motion), **Show** (fleet, limits, launch pad), **Safety** |
+| **Right** | Inspector: **Cue** (shape or model, timing, light, motion, stage effects), **Show** (fleet, venue, limits, launch pad), **Safety** |
 | **Bottom** | Transport, speed, loop, camera (orbit / audience / aerial / close-up), trails, timeline scrubber |
 
 | Keys | Action |
@@ -166,8 +181,9 @@ Unity -batchmode -quit -projectPath . -executeMethod DroneStar.EditorTools.Proje
 ```
 
 A Windows build can capture screenshots unattended:
-`DroneStarStudio.exe -capture shots -captureTimes 20,60,c4 [-demo] [-captureCamera audience|aerial|closeup] [-captureLive]`
-(`c4` = three seconds into scene 4's hold; `-captureLive` plays into each moment so drones lean and props turn).
+`DroneStarStudio.exe -capture shots -captureTimes 20,60,c4 [-demo [2] | -open 2] [-captureCamera audience|aerial|closeup] [-captureLive] [-captureSelect 4 -captureSection "Stage effects"]`
+(`c4` = three seconds into scene 4's hold; `-captureLive` plays into each moment so drones lean and props turn;
+`-open 2` opens Demo 2 in the studio without playing it, like `?open=2` on the web).
 
 ### Unity MCP
 
@@ -179,9 +195,10 @@ so an MCP client such as Claude Code can drive the open editor: in Unity choose
 ## Show file format
 
 Shows are plain JSON (`*.dronestar.json`, format tag `dronestar-show`, version 1): title, author,
-drone count, safety limits, launch pad and an ordered list of cues, each with a formation (including the
-`model` name for 3D models), light, motion and timing block. Files are validated and clamped on load;
-unknown fields are ignored.
+drone count, venue, safety limits, launch pad and an ordered list of cues, each with a formation (including the
+`model` name for 3D models), light, motion, stage effects and timing block. Files are validated and clamped on
+load; unknown fields are ignored, and files from before stage effects existed open with automatic lasers and
+fountains and no flames or steam.
 
 ## License
 

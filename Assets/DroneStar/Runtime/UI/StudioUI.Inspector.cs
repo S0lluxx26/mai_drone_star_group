@@ -65,6 +65,20 @@ namespace DroneStar.App
         }
 
         /// <summary>Switches the inspector to "cue", "show" or "safety" (used by automated captures).</summary>
+        /// <summary>Scrolls the cue page to the section with this title (for screenshots and tests).</summary>
+        public void ScrollCuePageTo(string sectionTitle)
+        {
+            if (cuePage == null) return;
+            string wanted = sectionTitle.ToUpperInvariant();
+            foreach (VisualElement section in cuePage.Query(className: "ds-section").ToList())
+            {
+                Label title = section.Q<Label>(className: "ds-section-title");
+                if (title == null || title.text != wanted) continue;
+                cuePage.ScrollTo(section);
+                return;
+            }
+        }
+
         public void ShowInspectorTab(string name)
         {
             if (Enum.TryParse(name, true, out InspectorTab tab)) SelectTab(tab);
@@ -87,7 +101,7 @@ namespace DroneStar.App
             string key = cue == null
                 ? "none"
                 : string.Join("|", app.SelectedCue, app.Session.Document.Cues.Count, cue.Formation.Kind, cue.Formation.Style,
-                    cue.Light.Effect, cue.Motion.Kind, cue.AutoTransition);
+                    cue.Light.Effect, cue.Motion.Kind, cue.AutoTransition, app.Session.Document.Venue, cue.Effects.Flames != FlameMode.Off);
             if (key != cueStructureKey)
             {
                 cueStructureKey = key;
@@ -323,6 +337,49 @@ namespace DroneStar.App
             }
             motion.Add(Ui.Text("Motions ease in and out, and parked drones stay still.", "ds-hint"));
             cuePage.Add(motion);
+
+            // Stage effects ------------------------------------------------------
+            cuePage.Add(BuildStageEffects(cue));
+        }
+
+        /// <summary>
+        /// What the festival stage does while this cue flies in and holds. The demo plays exactly this; at the night
+        /// lake the section explains where the effects live instead.
+        /// </summary>
+        VisualElement BuildStageEffects(Cue cue)
+        {
+            var stage = Ui.Section("Stage effects");
+            if (app.Session.Document.Venue != ShowVenue.Festival)
+            {
+                stage.Add(Ui.Text("Lasers, fountains, flames and steam play on the festival stage. This show is staged on the night lake.", "ds-hint"));
+                stage.Add(Ui.Button("Use the festival stage", null, () => Edit("Change venue", d => d.Venue = ShowVenue.Festival),
+                    "ds-btn--small", "Stage this show at the festival venue (also on the Show tab)"));
+                return stage;
+            }
+            stage.Add(Ui.Field("Lasers", Bind(new Segmented(new[] { "Auto", "Off", "Fans", "Sweep", "Tunnel" },
+                () => (int)(SelectedCue?.Effects.Lasers ?? LaserMode.Auto),
+                i => EditCue("Change lasers", c => c.Effects.Lasers = (LaserMode)i)))));
+            stage.Add(Ui.Field("Fountains", Bind(new Segmented(new[] { "Auto", "Off", "Dance", "Arch", "Tall" },
+                () => (int)(SelectedCue?.Effects.Fountains ?? FountainMode.Auto),
+                i => EditCue("Change fountains", c => c.Effects.Fountains = (FountainMode)i)))));
+            stage.Add(Ui.Field("Flames", Bind(new Segmented(new[] { "Off", "Beat", "Salvo" },
+                () => (int)(SelectedCue?.Effects.Flames ?? FlameMode.Off),
+                i => EditCue("Change flames", c => c.Effects.Flames = (FlameMode)i)))));
+            var steam = new Toggle("Steam from the water") { value = cue.Effects.Steam };
+            steam.RegisterValueChangedCallback(e => EditCue("Toggle steam", c => c.Effects.Steam = e.newValue));
+            cueBindings.Add(new Binding(() =>
+            {
+                if (SelectedCue != null) steam.SetValueWithoutNotify(SelectedCue.Effects.Steam);
+            }));
+            stage.Add(steam);
+            if (cue.Effects.Flames != FlameMode.Off)
+            {
+                stage.Add(Ui.Text(string.Format(Inv,
+                    "Flames fire on the stage while this scene holds. Drones must keep {0:0} m from them while they are armed, and the safety check holds them to it.",
+                    FestivalStage.FlameSafetyDistance), "ds-hint ds-warn"));
+            }
+            stage.Add(Ui.Text("Auto follows the show. Effects apply from this cue's flight in to the end of its hold, and never change the flight.", "ds-hint"));
+            return stage;
         }
 
         VisualElement BuildSketchEditor()
@@ -458,7 +515,7 @@ namespace DroneStar.App
                 i => Edit("Change venue", d => d.Venue = (ShowVenue)i));
             showBindings.Add(venue);
             show.Add(Ui.Field("Venue", venue));
-            show.Add(Ui.Text("The festival stage adds a bronze drum, fountains, mist and lasers that follow the show. The flight plan is the same.", "ds-hint"));
+            show.Add(Ui.Text("The festival stage adds a bronze drum with lasers, fountains, flames and steam, set scene by scene under Stage effects on each cue. The flight plan is the same.", "ds-hint"));
             show.Add(Ui.Text("Fleet presets resize every shape, altitude and limit to suit the fleet; the slider changes only the count. " +
                              "Every transition solves an optimal drone-to-slot assignment, so thousands of drones take a few seconds to plan " +
                              "(the built-in show is pre-planned at 1K, 2K and 4K).", "ds-hint"));
@@ -543,6 +600,13 @@ namespace DroneStar.App
                 stats.Add(Stat("Highest point", report.MaxAltitude.ToString("0.0", Inv) + " m", report.MaxAltitude <= l.MaxAltitude));
                 stats.Add(Stat("Furthest from pads", report.MaxRadius.ToString("0", Inv) + " m", report.MaxRadius <= l.GeofenceRadius));
                 stats.Add(Stat("Flight time", Ui.Clock(app.Show.Duration), app.Show.Duration <= l.MaxFlightSeconds));
+                if (report.FlamesArmed)
+                {
+                    string flames = float.IsPositiveInfinity(report.MinFlameClearance)
+                        ? "> " + report.FlameSearchRadius.ToString("0", Inv) + " m"
+                        : report.MinFlameClearance.ToString("0.0", Inv) + " m";
+                    stats.Add(Stat("Clear of the flames", flames, report.MinFlameClearance >= FestivalStage.FlameSafetyDistance));
+                }
                 safetyPage.Add(stats);
 
                 var findings = Ui.Section("Findings");

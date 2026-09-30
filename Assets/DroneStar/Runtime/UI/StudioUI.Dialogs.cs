@@ -270,6 +270,11 @@ namespace DroneStar.App
                 CloseDialog();
                 app.ExportTrajectories();
             }));
+            d.Add(ListItem("Stage cue sheet (.csv)", "Timecodes for the laser, fountain, flame and steam operators, scene by scene, with each flame safety window.", () =>
+            {
+                CloseDialog();
+                app.ExportStageCueSheet();
+            }));
             d.Add(ListItem("Flight report (.md)", "Safety verdict, flight envelope, cue table and every finding.", () =>
             {
                 CloseDialog();

@@ -194,6 +194,11 @@ namespace DroneStar.App
                     CueTiming t = app.Show.CueTimings[i];
                     meta = "in " + Ui.Seconds(t.TransitSeconds) + " · hold " + Ui.Seconds(t.HoldSeconds);
                     if (t.Formation.DarkCount > 0) meta += " · " + t.Formation.DarkCount + " parked";
+                    if (app.Show.Document.Venue == ShowVenue.Festival)
+                    {
+                        if (cue.Effects.Flames != FlameMode.Off) meta += " · flames";
+                        if (cue.Effects.Steam) meta += " · steam";
+                    }
                 }
                 else
                 {
@@ -374,7 +379,26 @@ namespace DroneStar.App
                 }
                 stripSegments.Add(block);
             }
+            // The stage lane: flames (orange) while a scene's flames fire, steam (white) from its flight in to its hold's end.
+            if (show.Document.Venue == ShowVenue.Festival)
+            {
+                foreach (CueTiming t in show.CueTimings)
+                {
+                    StageEffects fx = show.Document.Cues[t.CueIndex].Effects;
+                    if (fx.Flames != FlameMode.Off) stripSegments.Add(EffectBar("ds-fx--flame", t.HoldStart, t.HoldEnd, duration));
+                    if (fx.Steam) stripSegments.Add(EffectBar("ds-fx--steam", t.TransitStart, t.HoldEnd, duration));
+                }
+            }
             RebuildTimelineMarkers();
+        }
+
+        static VisualElement EffectBar(string kind, float start, float end, float duration)
+        {
+            var bar = Ui.El("ds-fx " + kind);
+            bar.pickingMode = PickingMode.Ignore;
+            bar.style.left = Length.Percent(start / duration * 100f);
+            bar.style.width = Length.Percent(Mathf.Max(end - start, 0f) / duration * 100f);
+            return bar;
         }
 
         void RebuildTimelineMarkers()

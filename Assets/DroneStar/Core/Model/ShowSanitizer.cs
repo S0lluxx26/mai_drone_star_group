@@ -93,6 +93,12 @@ namespace DroneStar.Core
             float maxAmount = m.Kind == MotionKind.Breathe ? 0.5f : m.Kind == MotionKind.Wave ? 12f
                 : m.Kind == MotionKind.Flap ? ShowBounds.MaxFlapDegrees : ShowBounds.MaxMotionAmount;
             m.Amount = Finite(m.Amount, 0f, maxAmount, 0.15f);
+
+            cue.Effects = cue.Effects ?? new StageEffects();
+            StageEffects fx = cue.Effects;
+            if (!Enum.IsDefined(typeof(LaserMode), fx.Lasers)) fx.Lasers = LaserMode.Auto;
+            if (!Enum.IsDefined(typeof(FountainMode), fx.Fountains)) fx.Fountains = FountainMode.Auto;
+            if (!Enum.IsDefined(typeof(FlameMode), fx.Flames)) fx.Flames = FlameMode.Off;
         }
 
         static float Finite(float value, float lo, float hi, float fallback)

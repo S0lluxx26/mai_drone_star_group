@@ -419,7 +419,12 @@
 
 .ds-segmented .ds-btn {
     flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
     margin: 0 1px;
+    padding-left: 2px;
+    padding-right: 2px;
     height: 24px;
     font-size: 11px;
 }
@@ -613,6 +618,25 @@
     width: 2px;
     margin-left: -1px;
     background-color: #FFFFFF;
+}
+
+/* Stage effects lane along the bottom of the timeline strip. */
+.ds-fx {
+    position: absolute;
+    height: 5px;
+    border-radius: 2px;
+    border-width: 1px;
+    border-color: rgba(12, 6, 24, 0.85);
+}
+
+.ds-fx--flame {
+    bottom: 2px;
+    background-color: #FF6A10;
+}
+
+.ds-fx--steam {
+    bottom: 8px;
+    background-color: rgba(230, 240, 255, 0.95);
 }
 
 .ds-marker {

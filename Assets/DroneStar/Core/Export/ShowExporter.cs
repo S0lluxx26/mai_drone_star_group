@@ -68,16 +68,29 @@ namespace DroneStar.Core
             sb.Append(string.Format(ci, "- Top speed: {0:0.0} m/s at {1:0.0} s (limit {2:0.0} m/s)\n", report.MaxSpeed, report.MaxSpeedTime, l.MaxSpeed));
             sb.Append(string.Format(ci, "- Peak acceleration: {0:0.0} m/s² (limit {1:0.0} m/s²)\n", report.MaxAcceleration, l.MaxAcceleration));
             sb.Append(string.Format(ci, "- Highest point: {0:0.0} m (ceiling {1:0} m)\n", report.MaxAltitude, l.MaxAltitude));
-            sb.Append(string.Format(ci, "- Furthest from pad centre: {0:0.0} m (fence {1:0} m)\n\n", report.MaxRadius, l.GeofenceRadius));
+            sb.Append(string.Format(ci, "- Furthest from pad centre: {0:0.0} m (fence {1:0} m)\n", report.MaxRadius, l.GeofenceRadius));
+            if (report.FlamesArmed)
+            {
+                string flames = float.IsPositiveInfinity(report.MinFlameClearance)
+                    ? string.Format(ci, "more than {0:0} m", report.FlameSearchRadius)
+                    : string.Format(ci, "{0:0.0} m at {1:0.0} s", report.MinFlameClearance, report.MinFlameClearanceTime);
+                sb.Append(string.Format(ci, "- Closest to the stage flames: {0} (keep {1:0} m while armed)\n", flames, FestivalStage.FlameSafetyDistance));
+            }
+            bool festival = doc.Venue == ShowVenue.Festival;
+            sb.Append("- Venue: ").Append(festival ? "festival stage" : "night lake").Append("\n\n");
 
-            sb.Append("## Cues\n\n| # | Cue | Formation | Starts | Transit | Hold | Lit drones |\n|---|---|---|---|---|---|---|\n");
+            sb.Append(festival
+                ? "## Cues\n\n| # | Cue | Formation | Starts | Transit | Hold | Lit drones | Stage effects |\n|---|---|---|---|---|---|---|---|\n"
+                : "## Cues\n\n| # | Cue | Formation | Starts | Transit | Hold | Lit drones |\n|---|---|---|---|---|---|---|\n");
             for (int i = 0; i < show.CueTimings.Count; i++)
             {
                 CueTiming t = show.CueTimings[i];
                 Cue cue = doc.Cues[i];
-                sb.Append(string.Format(ci, "| {0} | {1} | {2} | {3:0.0} s | {4:0.0} s | {5:0.0} s | {6}/{7} |\n",
+                sb.Append(string.Format(ci, "| {0} | {1} | {2} | {3:0.0} s | {4:0.0} s | {5:0.0} s | {6}/{7} |",
                     i + 1, Escape(cue.Name), cue.Formation.Kind, t.TransitStart, t.TransitSeconds, t.HoldSeconds,
                     t.Formation.LitCount, show.DroneCount));
+                if (festival) sb.Append(' ').Append(FestivalStage.Describe(cue.Effects)).Append(" |");
+                sb.Append('\n');
             }
 
             sb.Append("\n## Findings\n\n");
@@ -87,6 +100,54 @@ namespace DroneStar.Core
                 sb.Append("- **").Append(issue.Severity).Append("** ").Append(issue.Message).Append('\n');
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// The stage cue sheet for the laser, fountain and flame operators: one row per scene with its flight in,
+        /// hold and the window its flames are armed, in show seconds, plus the hold's start as SMPTE timecode at
+        /// 25 frames per second (the show starts at 00:00:00:00). At the lake venue the stage columns read "none".
+        /// </summary>
+        public static string ToStageCueSheet(CompiledShow show)
+        {
+            if (show == null) throw new ArgumentNullException(nameof(show));
+            CultureInfo ci = CultureInfo.InvariantCulture;
+            ShowDocument doc = show.Document;
+            bool festival = doc.Venue == ShowVenue.Festival;
+            var sb = new StringBuilder();
+            sb.Append("cue,name,flight_in_s,hold_start_s,hold_end_s,hold_start_tc,lasers,fountains,flames,flames_armed_from_s,flames_armed_to_s,steam\n");
+            for (int i = 0; i < show.CueTimings.Count; i++)
+            {
+                CueTiming t = show.CueTimings[i];
+                StageEffects fx = doc.Cues[i].Effects;
+                bool flames = festival && fx.Flames != FlameMode.Off;
+                sb.Append((i + 1).ToString(ci)).Append(',')
+                  .Append(CsvText(doc.Cues[i].Name)).Append(',')
+                  .Append(t.TransitStart.ToString("0.00", ci)).Append(',')
+                  .Append(t.HoldStart.ToString("0.00", ci)).Append(',')
+                  .Append(t.HoldEnd.ToString("0.00", ci)).Append(',')
+                  .Append(Timecode(t.HoldStart)).Append(',')
+                  .Append(festival ? fx.Lasers.ToString().ToLowerInvariant() : "none").Append(',')
+                  .Append(festival ? fx.Fountains.ToString().ToLowerInvariant() : "none").Append(',')
+                  .Append(festival ? fx.Flames.ToString().ToLowerInvariant() : "none").Append(',')
+                  .Append(flames ? Math.Max(0f, t.HoldStart - FestivalStage.FlameArmLead).ToString("0.00", ci) : "").Append(',')
+                  .Append(flames ? (t.HoldEnd + FestivalStage.FlameArmTail).ToString("0.00", ci) : "").Append(',')
+                  .Append(!festival ? "none" : fx.Steam ? "on" : "off").Append('\n');
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>SMPTE timecode hh:mm:ss:ff at 25 frames per second.</summary>
+        public static string Timecode(float seconds)
+        {
+            long frames = (long)Math.Round(Math.Max(0.0, seconds) * 25.0);
+            long total = frames / 25;
+            return string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00}:{2:00}:{3:00}", total / 3600, total / 60 % 60, total % 60, frames % 25);
+        }
+
+        static string CsvText(string s)
+        {
+            s = s ?? "";
+            return s.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0 ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
         }
 
         static string Escape(string s) => (s ?? "").Replace("|", "\\|");

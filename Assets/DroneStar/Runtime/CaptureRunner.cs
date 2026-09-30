@@ -11,7 +11,8 @@ namespace DroneStar.App
     /// Automated screenshots for visual review and store pages. Inert unless the player is started with
     /// <c>-capture &lt;folder&gt;</c>. Optional: <c>-captureTimes 5,30,90</c> (show seconds),
     /// or <c>-captureTimes c0,c4</c> (scenes), <c>-captureCamera orbit|audience|aerial|closeup</c>, <c>-captureTab</c>,
-    /// <c>-captureSelect &lt;cue&gt;</c>, <c>-captureAddCue &lt;kind&gt;</c>, <c>-captureLive</c> (capture while playing,
+    /// <c>-captureSelect &lt;cue&gt;</c>, <c>-captureSection "Stage effects"</c> (scroll the cue page to a section),
+    /// <c>-captureAddCue &lt;kind&gt;</c>, <c>-captureLive</c> (capture while playing,
     /// so drones lean and props turn) and <c>-demo</c> to capture the cinematic run.
     /// </summary>
     public sealed class CaptureRunner : MonoBehaviour
@@ -66,6 +67,15 @@ namespace DroneStar.App
             if (!string.IsNullOrEmpty(select) && int.TryParse(select, NumberStyles.Integer, CultureInfo.InvariantCulture, out int selected))
             {
                 app.Select(selected, seek: false);
+            }
+            string section = Arg("-captureSection");
+            if (!string.IsNullOrEmpty(section))
+            {
+                var inspector = FindAnyObjectByType<StudioUI>();
+                // Let the inspector lay out before scrolling it.
+                yield return null;
+                yield return null;
+                if (inspector != null) inspector.ScrollCuePageTo(section);
             }
 
             string mode = Arg("-captureCamera");

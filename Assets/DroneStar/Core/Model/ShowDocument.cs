@@ -167,12 +167,70 @@ namespace DroneStar.Core
         public MotionSpec Clone() => (MotionSpec)MemberwiseClone();
     }
 
+    /// <summary>What the festival stage's lasers do while a cue flies in and holds.</summary>
+    public enum LaserMode
+    {
+        /// <summary>Follow the show: tunnels at take-off, fans in the holds, searching beams in the flights.</summary>
+        Auto,
+        Off,
+        /// <summary>Still fans: the prows open outward and the centre fan leans back behind the drum.</summary>
+        Fans,
+        /// <summary>The fans sweep from side to side over each bar of the drum.</summary>
+        Sweep,
+        /// <summary>The prow fans lean in over the stage, a roof of light.</summary>
+        Tunnel,
+    }
+
+    /// <summary>What the festival fountains do while a cue flies in and holds.</summary>
+    public enum FountainMode
+    {
+        /// <summary>Follow the show: a burst as each scene appears, the arched water screen in the holds.</summary>
+        Auto,
+        Off,
+        /// <summary>Jets chase each other on the drumbeat.</summary>
+        Dance,
+        /// <summary>The arched water screen stands tall behind the drum; the rest run low.</summary>
+        Arch,
+        /// <summary>Every jet at full height.</summary>
+        Tall,
+    }
+
+    /// <summary>Flame projectors on the festival stage. They fire only during the cue's hold.</summary>
+    public enum FlameMode
+    {
+        Off,
+        /// <summary>Bursts on the drum rhythm: the front row and one boat on the one, the other boat on the three.</summary>
+        Beat,
+        /// <summary>Every projector at once: a long burst as the scene appears, then a volley on every bar.</summary>
+        Salvo,
+    }
+
+    /// <summary>
+    /// The festival stage's effects for one cue, from the start of its flight in to the end of its hold. Effects
+    /// are scenery: they never change the flight plan. Flames arm a safety zone that drones must keep clear of
+    /// (see <see cref="FestivalStage"/>), which the safety check enforces.
+    /// </summary>
+    public sealed class StageEffects
+    {
+        public LaserMode Lasers = LaserMode.Auto;
+        public FountainMode Fountains = FountainMode.Auto;
+        public FlameMode Flames = FlameMode.Off;
+
+        /// <summary>Steam rises from the water around the stage, lit in the cue's colours.</summary>
+        public bool Steam;
+
+        public StageEffects Clone() => (StageEffects)MemberwiseClone();
+    }
+
     public sealed class Cue
     {
         public string Name = "Cue";
         public FormationSpec Formation = new FormationSpec();
         public LightSpec Light = new LightSpec();
         public MotionSpec Motion = new MotionSpec();
+
+        /// <summary>The festival stage's lasers, fountains, flames and steam for this cue (festival venue only).</summary>
+        public StageEffects Effects = new StageEffects();
 
         /// <summary>When true the compiler picks the shortest transition time that respects the speed and acceleration limits.</summary>
         public bool AutoTransition = true;
@@ -186,6 +244,7 @@ namespace DroneStar.Core
             c.Formation = Formation?.Clone();
             c.Light = Light?.Clone();
             c.Motion = Motion?.Clone();
+            c.Effects = Effects?.Clone();
             return c;
         }
     }
@@ -227,14 +286,17 @@ namespace DroneStar.Core
         public LaunchPadSpec Clone() => (LaunchPadSpec)MemberwiseClone();
     }
 
-    /// <summary>Where a show is staged. The venue is scenery and effects only; it never changes the flight plan.</summary>
+    /// <summary>
+    /// Where a show is staged. The venue is scenery and effects only; it never changes the flight plan (but flames
+    /// on the festival stage add a zone the safety check keeps drones out of).
+    /// </summary>
     public enum ShowVenue
     {
         /// <summary>The night lake with the launch barge.</summary>
         Lake,
         /// <summary>
         /// The lake with a festival stage in front of the audience: a bronze drum on a sun-star platform, boat-shaped
-        /// wings, fountains, mist and lasers choreographed to the show.
+        /// wings, fountains, lasers, flames and steam, cued per scene by <see cref="Cue.Effects"/>.
         /// </summary>
         Festival,
     }
