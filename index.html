@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <meta name="description" content="Drone Star Studio: design and fly drone light shows for the Mai Drone Star Group, right in the browser.">
+    <meta name="theme-color" content="#030816">
+    <title>Drone Star Studio · Mai Drone Star Group</title>
+    <link rel="icon" href="TemplateData/favicon.svg" type="image/svg+xml">
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #030816; }
+      #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #030816; outline: none; }
+      #loader {
+        position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at 50% 120%, #0f2a5c 0%, #071430 45%, #030816 100%);
+        color: #f6f1ff; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; transition: opacity .8s ease;
+      }
+      #loader.done { opacity: 0; pointer-events: none; }
+      #loader svg { width: 64px; height: 64px; filter: drop-shadow(0 0 18px rgba(255, 194, 26, .65)); animation: pulse 2.4s ease-in-out infinite; }
+      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+      #loader h1 { margin: 18px 0 2px; font-size: 28px; letter-spacing: 6px; font-weight: 700; color: #ffc21a; text-transform: uppercase; }
+      #loader p { margin: 0 0 26px; font-size: 12px; letter-spacing: 4px; color: #afa9cf; text-transform: uppercase; }
+      #bar { width: min(360px, 70vw); height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .09); overflow: hidden; }
+      #fill { width: 0%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ff2e88, #ffc21a); transition: width .2s ease; }
+      #status { margin-top: 12px; font-size: 12px; color: #6f6a93; min-height: 16px; }
+      #warning { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); max-width: 80vw; padding: 10px 16px; border-radius: 10px;
+        background: rgba(255, 77, 94, .92); color: #fff; font: 13px "Segoe UI", system-ui, sans-serif; display: none; z-index: 10; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loader">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ffc21a" d="M12 1.8l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9l7.1-.6z"/></svg>
+      <h1>Drone Star Studio</h1>
+      <p>Mai Drone Star Group</p>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="status">Loading the night sky…</div>
+    </div>
+    <div id="warning"></div>
+    <noscript><p style="color:#fff;text-align:center;margin-top:40vh">Drone Star Studio needs JavaScript and WebGL 2.</p></noscript>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var fill = document.querySelector("#fill");
+      var statusText = document.querySelector("#status");
+      function showBanner(msg, type) {
+        var warning = document.querySelector("#warning");
+        if (type === "error") { warning.textContent = msg; warning.style.display = "block"; }
+        else if (type === "warning") { console.warn(msg); }
+      }
+      var buildUrl = "Build";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/WebGL.data.unityweb",
+        frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb",
+        codeUrl: buildUrl + "/WebGL.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Mai Drone Star Group",
+        productName: "Drone Star Studio",
+        productVersion: "0.1.0",
+        showBanner: showBanner,
+        // Saved shows live in persistentDataPath; persist every write to IndexedDB immediately.
+        autoSyncPersistentDataPath: true,
+        // Cap the backing store on very high-DPI screens so the GPU is not asked for 4K+ frames.
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      };
+      var script = document.createElement("script");
+      script.src = buildUrl + "/WebGL.loader.js";
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (progress) {
+          fill.style.width = Math.round(progress * 100) + "%";
+          statusText.textContent = progress < 0.9 ? "Loading the night sky… " + Math.round(progress * 100) + "%" : "Warming up the drones…";
+        }).then(function (unityInstance) {
+          window.unityInstance = unityInstance;
+          document.querySelector("#loader").classList.add("done");
+          canvas.focus();
+        }).catch(function (message) {
+          showBanner(String(message), "error");
+          statusText.textContent = "This browser could not start the studio (WebGL 2 is required).";
+        });
+      };
+      script.onerror = function () { showBanner("Could not download the studio. Check your connection and reload.", "error"); };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
