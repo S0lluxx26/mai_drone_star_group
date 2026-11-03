@@ -72,19 +72,7 @@ namespace DroneStar.App
             RenderSettings.ambientGroundColor = new Color(0.025f, 0.025f, 0.035f);
         }
 
-        GameObject Spawn(string objectName, Mesh mesh, Material material)
-        {
-            var go = new GameObject(objectName);
-            go.transform.SetParent(transform, false);
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var r = go.AddComponent<MeshRenderer>();
-            r.sharedMaterial = material;
-            r.shadowCastingMode = ShadowCastingMode.Off;
-            r.receiveShadows = false;
-            r.lightProbeUsage = LightProbeUsage.Off;
-            r.reflectionProbeUsage = ReflectionProbeUsage.Off;
-            return go;
-        }
+        GameObject Spawn(string objectName, Mesh mesh, Material material) => SceneObjects.Spawn(transform, objectName, mesh, material).gameObject;
 
         GameObject SpawnLights(string objectName, List<Vector3> positions, Material material, Color? tint = null, float size = 1f)
         {

@@ -488,20 +488,7 @@ namespace DroneStar.App
             steamRenderer = Spawn("Steam", BuildSteam(), steamMaterial);
         }
 
-        MeshRenderer Spawn(string objectName, Mesh mesh, Material material)
-        {
-            var go = new GameObject(objectName);
-            go.transform.SetParent(transform, false);
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var r = go.AddComponent<MeshRenderer>();
-            r.sharedMaterial = material;
-            r.shadowCastingMode = ShadowCastingMode.Off;
-            r.receiveShadows = false;
-            r.lightProbeUsage = LightProbeUsage.Off;
-            r.reflectionProbeUsage = ReflectionProbeUsage.Off;
-            r.allowOcclusionWhenDynamic = false;
-            return r;
-        }
+        MeshRenderer Spawn(string objectName, Mesh mesh, Material material) => SceneObjects.Spawn(transform, objectName, mesh, material);
 
         static readonly Color Bronze = new Color(0.46f, 0.28f, 0.11f);
         static readonly Color DarkBronze = new Color(0.22f, 0.13f, 0.06f);
